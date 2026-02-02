@@ -1,0 +1,26 @@
+{
+  "name": "event-bus",
+  "version": "1.0.0",
+  "description": "CloudRetail Event Bus - Event-Driven Architecture Hub",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "nodemon src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1",
+    "kafkajs": "^2.2.4",
+    "redis": "^4.6.11",
+    "@cloudretail/models": "1.0.0",
+    "@cloudretail/middleware": "1.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.3.3",
+    "nodemon": "^3.0.2",
+    "ts-node": "^10.9.2"
+  }
+}

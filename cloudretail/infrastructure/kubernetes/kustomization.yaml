@@ -1,0 +1,106 @@
+# Kustomization file for CloudRetail Kubernetes deployment
+# This allows for easy deployment and environment-specific overlays
+
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: cloudretail
+
+resources:
+  # Namespace
+  - namespace.yaml
+
+  # Resource Management
+  - resource-quota.yaml
+
+  # Configuration
+  - configmap.yaml
+  - secrets.yaml
+
+  # Infrastructure - Databases
+  - postgres-statefulset.yaml
+  - redis-deployment.yaml
+
+  # Infrastructure - Messaging
+  - kafka-statefulset.yaml
+
+  # Microservices
+  - user-service-deployment.yaml
+  - product-service-deployment.yaml
+  - order-service-deployment.yaml
+  - inventory-service-deployment.yaml
+  - payment-service-deployment.yaml
+  - event-bus-deployment.yaml
+  - api-gateway-deployment.yaml
+
+  # Networking
+  - ingress.yaml
+  - network-policy.yaml
+
+  # Autoscaling
+  - hpa.yaml
+
+labels:
+  - pairs:
+      app: cloudretail
+      environment: production
+      managed-by: kustomize
+
+images:
+  - name: cloudretail/user-service
+    newTag: latest
+  - name: cloudretail/product-service
+    newTag: latest
+  - name: cloudretail/order-service
+    newTag: latest
+  - name: cloudretail/inventory-service
+    newTag: latest
+  - name: cloudretail/payment-service
+    newTag: latest
+  - name: cloudretail/event-bus
+    newTag: latest
+  - name: cloudretail/api-gateway
+    newTag: latest
+
+commonLabels:
+  platform: cloudretail
+  version: v1
+
+commonAnnotations:
+  contact: devops@cloudretail.example.com
+  documentation: https://docs.cloudretail.example.com
+
+# Configuration transformers
+configMapGenerator:
+  - name: cloudretail-build-info
+    literals:
+      - BUILD_DATE=2026-01-21
+      - GIT_COMMIT=unknown
+      - VERSION=1.0.0
+
+# Secret generators (optional - can be used instead of secrets.yaml)
+# secretGenerator:
+#   - name: cloudretail-secrets
+#     envs:
+#       - secrets.env
+
+# Patches for environment-specific customizations
+# patchesStrategicMerge:
+#   - patches/production.yaml
+
+# Replicas (can be overridden per environment)
+replicas:
+  - name: user-service
+    count: 3
+  - name: product-service
+    count: 3
+  - name: order-service
+    count: 3
+  - name: inventory-service
+    count: 3
+  - name: payment-service
+    count: 3
+  - name: event-bus
+    count: 3
+  - name: api-gateway
+    count: 3

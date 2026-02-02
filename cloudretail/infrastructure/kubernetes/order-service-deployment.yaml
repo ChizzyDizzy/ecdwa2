@@ -1,0 +1,198 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: cloudretail
+  labels:
+    app: order-service
+    component: microservice
+    version: v1
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+        component: microservice
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3003"
+        prometheus.io/path: "/metrics"
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - order-service
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: order-service
+        image: cloudretail/order-service:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 3003
+          name: http
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: NODE_ENV
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: ORDER_SERVICE_PORT
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: DB_HOST_ORDERS
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: DB_PORT
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: DB_NAME_ORDERS
+        - name: DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: DB_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: cloudretail-secrets
+              key: DB_PASSWORD_ORDERS
+        - name: EVENT_BUS_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: EVENT_BUS_URL
+        - name: INVENTORY_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: INVENTORY_SERVICE_URL
+        - name: PAYMENT_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: PAYMENT_SERVICE_URL
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: LOG_LEVEL
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3003
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 3003
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 15"]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: cloudretail
+  labels:
+    app: order-service
+    component: microservice
+spec:
+  type: ClusterIP
+  ports:
+  - port: 3003
+    targetPort: 3003
+    protocol: TCP
+    name: http
+  selector:
+    app: order-service
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: order-service-hpa
+  namespace: cloudretail
+  labels:
+    app: order-service
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: order-service
+  minReplicas: 3
+  maxReplicas: 15
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+      - type: Pods
+        value: 3
+        periodSeconds: 30
+      selectPolicy: Max

@@ -1,0 +1,388 @@
+# Prometheus Alerting Rules for CloudRetail
+# Defines alerts for critical system conditions
+
+groups:
+  # Service Health Alerts
+  - name: service_health
+    interval: 30s
+    rules:
+      - alert: ServiceDown
+        expr: up{job=~".*-service|api-gateway"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          category: availability
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.job }} has been down for more than 2 minutes. Immediate action required."
+          runbook_url: "https://runbooks.cloudretail.com/service-down"
+
+      - alert: ServiceFlapping
+        expr: changes(up{job=~".*-service|api-gateway"}[10m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          category: stability
+        annotations:
+          summary: "Service {{ $labels.job }} is flapping"
+          description: "{{ $labels.job }} has restarted {{ $value }} times in the last 10 minutes."
+          runbook_url: "https://runbooks.cloudretail.com/service-flapping"
+
+      - alert: HighRestartRate
+        expr: rate(process_start_time_seconds{job=~".*-service|api-gateway"}[15m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          category: stability
+        annotations:
+          summary: "High restart rate for {{ $labels.job }}"
+          description: "{{ $labels.job }} is restarting frequently. This may indicate instability."
+
+  # Performance Alerts
+  - name: performance
+    interval: 30s
+    rules:
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_milliseconds_bucket{job=~".*-service|api-gateway"}[5m])) > 1000
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "High response time for {{ $labels.job }}"
+          description: "95th percentile response time for {{ $labels.job }} is {{ $value }}ms (threshold: 1000ms)"
+          runbook_url: "https://runbooks.cloudretail.com/high-response-time"
+
+      - alert: CriticalResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_milliseconds_bucket{job=~".*-service|api-gateway"}[5m])) > 3000
+        for: 5m
+        labels:
+          severity: critical
+          category: performance
+        annotations:
+          summary: "Critical response time for {{ $labels.job }}"
+          description: "95th percentile response time for {{ $labels.job }} is {{ $value }}ms (threshold: 3000ms). User experience severely impacted."
+          runbook_url: "https://runbooks.cloudretail.com/critical-response-time"
+
+      - alert: HighThroughputDrop
+        expr: (rate(http_requests_total{job=~".*-service|api-gateway"}[5m]) / rate(http_requests_total{job=~".*-service|api-gateway"}[5m] offset 1h)) < 0.5
+        for: 10m
+        labels:
+          severity: warning
+          category: performance
+        annotations:
+          summary: "Throughput dropped for {{ $labels.job }}"
+          description: "Request rate for {{ $labels.job }} has dropped by more than 50% compared to 1 hour ago."
+
+  # Error Rate Alerts
+  - name: error_rates
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: (rate(http_requests_total{job=~".*-service|api-gateway",status=~"5.."}[5m]) / rate(http_requests_total{job=~".*-service|api-gateway"}[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          category: errors
+        annotations:
+          summary: "High error rate for {{ $labels.job }}"
+          description: "Error rate for {{ $labels.job }} is {{ $value | humanizePercentage }} (threshold: 5%)"
+          runbook_url: "https://runbooks.cloudretail.com/high-error-rate"
+
+      - alert: CriticalErrorRate
+        expr: (rate(http_requests_total{job=~".*-service|api-gateway",status=~"5.."}[5m]) / rate(http_requests_total{job=~".*-service|api-gateway"}[5m])) > 0.15
+        for: 2m
+        labels:
+          severity: critical
+          category: errors
+        annotations:
+          summary: "Critical error rate for {{ $labels.job }}"
+          description: "Error rate for {{ $labels.job }} is {{ $value | humanizePercentage }} (threshold: 15%). Service degraded."
+          runbook_url: "https://runbooks.cloudretail.com/critical-error-rate"
+
+      - alert: HighClientErrorRate
+        expr: (rate(http_requests_total{job=~".*-service|api-gateway",status=~"4.."}[5m]) / rate(http_requests_total{job=~".*-service|api-gateway"}[5m])) > 0.20
+        for: 10m
+        labels:
+          severity: warning
+          category: errors
+        annotations:
+          summary: "High client error rate for {{ $labels.job }}"
+          description: "Client error (4xx) rate for {{ $labels.job }} is {{ $value | humanizePercentage }} (threshold: 20%)"
+
+  # Resource Utilization Alerts
+  - name: resource_utilization
+    interval: 30s
+    rules:
+      - alert: HighMemoryUsage
+        expr: (process_resident_memory_bytes{job=~".*-service|api-gateway"} / process_virtual_memory_max_bytes{job=~".*-service|api-gateway"}) > 0.80
+        for: 10m
+        labels:
+          severity: warning
+          category: resources
+        annotations:
+          summary: "High memory usage for {{ $labels.job }}"
+          description: "{{ $labels.job }} is using {{ $value | humanizePercentage }} of available memory (threshold: 80%)"
+          runbook_url: "https://runbooks.cloudretail.com/high-memory-usage"
+
+      - alert: CriticalMemoryUsage
+        expr: (process_resident_memory_bytes{job=~".*-service|api-gateway"} / process_virtual_memory_max_bytes{job=~".*-service|api-gateway"}) > 0.95
+        for: 5m
+        labels:
+          severity: critical
+          category: resources
+        annotations:
+          summary: "Critical memory usage for {{ $labels.job }}"
+          description: "{{ $labels.job }} is using {{ $value | humanizePercentage }} of available memory (threshold: 95%). OOM risk."
+          runbook_url: "https://runbooks.cloudretail.com/critical-memory-usage"
+
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total{job=~".*-service|api-gateway"}[5m]) * 100 > 80
+        for: 15m
+        labels:
+          severity: warning
+          category: resources
+        annotations:
+          summary: "High CPU usage for {{ $labels.job }}"
+          description: "{{ $labels.job }} CPU usage is {{ $value }}% (threshold: 80%)"
+          runbook_url: "https://runbooks.cloudretail.com/high-cpu-usage"
+
+      - alert: CriticalCPUUsage
+        expr: rate(process_cpu_seconds_total{job=~".*-service|api-gateway"}[5m]) * 100 > 95
+        for: 10m
+        labels:
+          severity: critical
+          category: resources
+        annotations:
+          summary: "Critical CPU usage for {{ $labels.job }}"
+          description: "{{ $labels.job }} CPU usage is {{ $value }}% (threshold: 95%). Service may become unresponsive."
+          runbook_url: "https://runbooks.cloudretail.com/critical-cpu-usage"
+
+  # Database Alerts
+  - name: database
+    interval: 30s
+    rules:
+      - alert: HighDatabaseConnections
+        expr: pg_stat_database_numbackends{datname="cloudretail"} > 80
+        for: 10m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "High number of database connections"
+          description: "Database has {{ $value }} active connections (threshold: 80)"
+          runbook_url: "https://runbooks.cloudretail.com/high-db-connections"
+
+      - alert: DatabaseConnectionsExhausted
+        expr: pg_stat_database_numbackends{datname="cloudretail"} > 95
+        for: 5m
+        labels:
+          severity: critical
+          category: database
+        annotations:
+          summary: "Database connection pool near exhaustion"
+          description: "Database has {{ $value }} active connections. Connection pool may be exhausted."
+          runbook_url: "https://runbooks.cloudretail.com/db-connections-exhausted"
+
+      - alert: SlowDatabaseQueries
+        expr: rate(pg_stat_statements_mean_exec_time_seconds[5m]) > 1
+        for: 10m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Average query execution time is {{ $value }}s (threshold: 1s)"
+          runbook_url: "https://runbooks.cloudretail.com/slow-db-queries"
+
+      - alert: DatabaseReplicationLag
+        expr: pg_replication_lag_seconds > 30
+        for: 5m
+        labels:
+          severity: warning
+          category: database
+        annotations:
+          summary: "Database replication lag detected"
+          description: "Replication lag is {{ $value }}s (threshold: 30s)"
+          runbook_url: "https://runbooks.cloudretail.com/db-replication-lag"
+
+  # Redis Alerts
+  - name: redis
+    interval: 30s
+    rules:
+      - alert: RedisHighMemoryUsage
+        expr: (redis_memory_used_bytes / redis_memory_max_bytes) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: "Redis memory usage is high"
+          description: "Redis is using {{ $value }}% of available memory (threshold: 80%)"
+          runbook_url: "https://runbooks.cloudretail.com/redis-high-memory"
+
+      - alert: RedisCriticalMemoryUsage
+        expr: (redis_memory_used_bytes / redis_memory_max_bytes) * 100 > 95
+        for: 5m
+        labels:
+          severity: critical
+          category: cache
+        annotations:
+          summary: "Redis memory usage is critical"
+          description: "Redis is using {{ $value }}% of available memory (threshold: 95%). Eviction may occur."
+          runbook_url: "https://runbooks.cloudretail.com/redis-critical-memory"
+
+      - alert: RedisHighConnectionCount
+        expr: redis_connected_clients > 1000
+        for: 10m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: "High number of Redis connections"
+          description: "Redis has {{ $value }} connected clients (threshold: 1000)"
+          runbook_url: "https://runbooks.cloudretail.com/redis-high-connections"
+
+      - alert: RedisKeyEvictions
+        expr: rate(redis_evicted_keys_total[5m]) > 10
+        for: 10m
+        labels:
+          severity: warning
+          category: cache
+        annotations:
+          summary: "Redis is evicting keys"
+          description: "Redis is evicting {{ $value }} keys/s. Memory may be insufficient."
+          runbook_url: "https://runbooks.cloudretail.com/redis-evictions"
+
+  # Message Queue Alerts
+  - name: message_queue
+    interval: 30s
+    rules:
+      - alert: HighMessageQueueDepth
+        expr: rabbitmq_queue_messages_ready > 1000
+        for: 10m
+        labels:
+          severity: warning
+          category: messaging
+        annotations:
+          summary: "High message queue depth in {{ $labels.queue }}"
+          description: "Queue {{ $labels.queue }} has {{ $value }} messages ready (threshold: 1000)"
+          runbook_url: "https://runbooks.cloudretail.com/high-queue-depth"
+
+      - alert: CriticalMessageQueueDepth
+        expr: rabbitmq_queue_messages_ready > 5000
+        for: 5m
+        labels:
+          severity: critical
+          category: messaging
+        annotations:
+          summary: "Critical message queue depth in {{ $labels.queue }}"
+          description: "Queue {{ $labels.queue }} has {{ $value }} messages ready (threshold: 5000). Consumer may be failing."
+          runbook_url: "https://runbooks.cloudretail.com/critical-queue-depth"
+
+      - alert: MessageConsumerLag
+        expr: rate(rabbitmq_queue_messages_published_total[5m]) > rate(rabbitmq_queue_messages_delivered_total[5m]) * 2
+        for: 10m
+        labels:
+          severity: warning
+          category: messaging
+        annotations:
+          summary: "Message consumer lag detected"
+          description: "Messages are being published faster than consumed. Backlog may be growing."
+          runbook_url: "https://runbooks.cloudretail.com/consumer-lag"
+
+      - alert: NoMessageConsumers
+        expr: rabbitmq_queue_consumers == 0
+        for: 5m
+        labels:
+          severity: critical
+          category: messaging
+        annotations:
+          summary: "No consumers for queue {{ $labels.queue }}"
+          description: "Queue {{ $labels.queue }} has no active consumers. Messages are not being processed."
+          runbook_url: "https://runbooks.cloudretail.com/no-consumers"
+
+  # Business Metrics Alerts
+  - name: business_metrics
+    interval: 1m
+    rules:
+      - alert: HighOrderFailureRate
+        expr: (rate(orders_failed_total[5m]) / rate(orders_total[5m])) > 0.10
+        for: 10m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "High order failure rate"
+          description: "Order failure rate is {{ $value | humanizePercentage }} (threshold: 10%)"
+          runbook_url: "https://runbooks.cloudretail.com/high-order-failure"
+
+      - alert: PaymentProcessingFailures
+        expr: rate(payments_failed_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: critical
+          category: business
+        annotations:
+          summary: "High payment processing failure rate"
+          description: "Payment processing is failing at {{ $value }} failures/s. Revenue impact."
+          runbook_url: "https://runbooks.cloudretail.com/payment-failures"
+
+      - alert: LowOrderVolume
+        expr: rate(orders_total[5m]) < 0.1
+        for: 30m
+        labels:
+          severity: warning
+          category: business
+        annotations:
+          summary: "Unusually low order volume"
+          description: "Order rate is {{ $value }} orders/s. This may indicate a problem with the ordering system."
+          runbook_url: "https://runbooks.cloudretail.com/low-order-volume"
+
+      - alert: InventoryOutOfStock
+        expr: inventory_stock_level == 0
+        for: 1h
+        labels:
+          severity: info
+          category: business
+        annotations:
+          summary: "Product {{ $labels.product_id }} is out of stock"
+          description: "Product {{ $labels.product_id }} has been out of stock for 1 hour."
+          runbook_url: "https://runbooks.cloudretail.com/out-of-stock"
+
+  # Security Alerts
+  - name: security
+    interval: 30s
+    rules:
+      - alert: HighUnauthorizedAttempts
+        expr: rate(http_requests_total{status="401"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "High rate of unauthorized access attempts"
+          description: "Detecting {{ $value }} unauthorized requests/s on {{ $labels.job }}. Possible brute force attack."
+          runbook_url: "https://runbooks.cloudretail.com/unauthorized-attempts"
+
+      - alert: SuspiciousActivitySpike
+        expr: rate(http_requests_total{status="403"}[5m]) > 20
+        for: 5m
+        labels:
+          severity: warning
+          category: security
+        annotations:
+          summary: "Spike in forbidden access attempts"
+          description: "Detecting {{ $value }} forbidden requests/s. Possible security probe."
+          runbook_url: "https://runbooks.cloudretail.com/suspicious-activity"
+
+      - alert: RateLimitExceeded
+        expr: rate(http_requests_total{status="429"}[5m]) > 50
+        for: 10m
+        labels:
+          severity: info
+          category: security
+        annotations:
+          summary: "High rate limit violations"
+          description: "Many clients are exceeding rate limits ({{ $value }} requests/s)"
+          runbook_url: "https://runbooks.cloudretail.com/rate-limit-exceeded"

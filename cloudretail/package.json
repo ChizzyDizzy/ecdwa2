@@ -1,0 +1,53 @@
+{
+  "name": "cloudretail-microservices",
+  "version": "1.0.0",
+  "description": "CloudRetail Enterprise E-Commerce Platform - Microservices Architecture",
+  "private": true,
+  "workspaces": [
+    "services/*",
+    "api-gateway",
+    "event-bus",
+    "shared/*"
+  ],
+  "scripts": {
+    "install:all": "npm install && npm run install:services",
+    "install:services": "npm install --workspaces",
+    "dev:user": "npm run dev --workspace=services/user-service",
+    "dev:product": "npm run dev --workspace=services/product-service",
+    "dev:order": "npm run dev --workspace=services/order-service",
+    "dev:inventory": "npm run dev --workspace=services/inventory-service",
+    "dev:payment": "npm run dev --workspace=services/payment-service",
+    "dev:gateway": "npm run dev --workspace=api-gateway",
+    "dev:eventbus": "npm run dev --workspace=event-bus",
+    "test": "npm run test --workspaces",
+    "test:unit": "npm run test:unit --workspaces",
+    "test:integration": "jest --config tests/integration/jest.config.js",
+    "test:performance": "node tests/performance/load-test.js",
+    "build": "npm run build --workspaces",
+    "docker:build": "docker-compose build",
+    "docker:up": "docker-compose up -d",
+    "docker:down": "docker-compose down",
+    "k8s:deploy": "kubectl apply -f infrastructure/kubernetes/",
+    "k8s:delete": "kubectl delete -f infrastructure/kubernetes/"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/jest": "^29.5.10",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.3.3",
+    "nodemon": "^3.0.2",
+    "ts-node": "^10.9.2",
+    "artillery": "^2.0.3",
+    "k6": "^0.0.0"
+  },
+  "keywords": [
+    "microservices",
+    "cloud-native",
+    "kubernetes",
+    "event-driven",
+    "e-commerce"
+  ],
+  "author": "CloudRetail Team",
+  "license": "MIT"
+}

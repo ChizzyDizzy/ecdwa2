@@ -1,0 +1,877 @@
+openapi: 3.0.3
+info:
+  title: CloudRetail E-Commerce Platform API
+  description: |
+    Comprehensive API documentation for CloudRetail's cloud-native, microservices-based e-commerce platform.
+
+    ## Architecture
+    CloudRetail follows a microservices architecture with:
+    - **API Gateway** (port 8080) - Central entry point for all requests
+    - **User Service** (port 3001) - Authentication and user management
+    - **Product Service** (port 3002) - Product catalog management
+    - **Order Service** (port 3003) - Order processing and management
+    - **Inventory Service** (port 3004) - Inventory tracking and management
+    - **Payment Service** (port 3005) - Payment processing
+    - **Event Bus** (port 4000) - Event-driven communication
+
+    ## Authentication
+    Most endpoints require JWT authentication. Include the JWT token in the Authorization header:
+    ```
+    Authorization: Bearer <token>
+    ```
+
+    ## Rate Limiting
+    - Standard endpoints: 100 requests per 15 minutes
+    - Authentication endpoints: 5 requests per 15 minutes
+
+    ## Security
+    - All communications use HTTPS in production
+    - Sensitive data is encrypted at rest and in transit
+    - GDPR compliant with data protection measures
+    - PCI DSS compliant for payment processing
+  version: 1.0.0
+  contact:
+    name: CloudRetail API Support
+    email: api-support@cloudretail.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+  - url: https://api-staging.cloudretail.com
+    description: Staging environment
+  - url: https://api.cloudretail.com
+    description: Production environment
+
+tags:
+  - name: Users
+    description: User management and authentication
+  - name: Products
+    description: Product catalog operations
+  - name: Orders
+    description: Order management
+  - name: Inventory
+    description: Inventory tracking
+  - name: Payments
+    description: Payment processing
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: [customer, admin, vendor]
+        isActive:
+          type: boolean
+        gdprConsent:
+          type: boolean
+        twoFactorEnabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          format: float
+        category:
+          type: string
+        sku:
+          type: string
+        vendorId:
+          type: string
+          format: uuid
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        totalAmount:
+          type: number
+          format: float
+        status:
+          type: string
+          enum: [pending, confirmed, processing, shipped, delivered, cancelled, refunded]
+        shippingAddress:
+          type: string
+        paymentId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    OrderItem:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 1
+        price:
+          type: number
+          format: float
+        subtotal:
+          type: number
+          format: float
+
+    Inventory:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+          minimum: 0
+        warehouseLocation:
+          type: string
+        reservedQuantity:
+          type: integer
+          minimum: 0
+        lastUpdated:
+          type: string
+          format: date-time
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        orderId:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        amount:
+          type: number
+          format: float
+        currency:
+          type: string
+          default: USD
+        status:
+          type: string
+          enum: [pending, processing, completed, failed, refunded]
+        paymentMethod:
+          type: string
+        transactionId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        success:
+          type: boolean
+          default: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+        metadata:
+          type: object
+          properties:
+            timestamp:
+              type: string
+              format: date-time
+            requestId:
+              type: string
+              format: uuid
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          default: true
+        data:
+          type: object
+        metadata:
+          type: object
+          properties:
+            timestamp:
+              type: string
+              format: date-time
+            requestId:
+              type: string
+              format: uuid
+
+  responses:
+    UnauthorizedError:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ForbiddenError:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFoundError:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+paths:
+  # User Endpoints
+  /api/users/register:
+    post:
+      tags:
+        - Users
+      summary: Register a new user
+      description: Creates a new user account with GDPR consent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - firstName
+                - lastName
+                - gdprConsent
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                role:
+                  type: string
+                  enum: [customer, admin, vendor]
+                gdprConsent:
+                  type: boolean
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/users/login:
+    post:
+      tags:
+        - Users
+      summary: Login user
+      description: Authenticate user and receive JWT token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                twoFactorCode:
+                  type: string
+                  pattern: '^[0-9]{6}$'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          token:
+                            type: string
+                          user:
+                            $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/users/profile:
+    get:
+      tags:
+        - Users
+      summary: Get current user profile
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    put:
+      tags:
+        - Users
+      summary: Update user profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                firstName:
+                  type: string
+                lastName:
+                  type: string
+                email:
+                  type: string
+                  format: email
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    delete:
+      tags:
+        - Users
+      summary: Delete user account (GDPR)
+      description: Permanently delete user account and all associated data
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Account deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/users/2fa/enable:
+    post:
+      tags:
+        - Users
+      summary: Enable two-factor authentication
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 2FA secret generated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          secret:
+                            type: string
+                          qrCode:
+                            type: string
+                            description: QR code as data URL
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /api/users/2fa/verify:
+    post:
+      tags:
+        - Users
+      summary: Verify and activate 2FA
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  pattern: '^[0-9]{6}$'
+      responses:
+        '200':
+          description: 2FA activated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  # Product Endpoints
+  /api/products/products:
+    get:
+      tags:
+        - Products
+      summary: Get all products
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Products retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          products:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Product'
+                          total:
+                            type: integer
+                          limit:
+                            type: integer
+                          offset:
+                            type: integer
+
+    post:
+      tags:
+        - Products
+      summary: Create a new product
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - description
+                - price
+                - category
+                - sku
+                - vendorId
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                  format: float
+                category:
+                  type: string
+                sku:
+                  type: string
+                vendorId:
+                  type: string
+                  format: uuid
+      responses:
+        '201':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Product'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /api/products/search:
+    get:
+      tags:
+        - Products
+      summary: Search products
+      parameters:
+        - name: q
+          in: query
+          description: Search query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: minPrice
+          in: query
+          schema:
+            type: number
+        - name: maxPrice
+          in: query
+          schema:
+            type: number
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  # Order Endpoints
+  /api/orders/orders:
+    post:
+      tags:
+        - Orders
+      summary: Create a new order
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+                - shippingAddress
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - productId
+                      - quantity
+                    properties:
+                      productId:
+                        type: string
+                        format: uuid
+                      quantity:
+                        type: integer
+                        minimum: 1
+                shippingAddress:
+                  type: string
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    get:
+      tags:
+        - Orders
+      summary: Get user's orders
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Orders retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Order'
+
+  /api/orders/orders/{orderId}:
+    get:
+      tags:
+        - Orders
+      summary: Get order by ID
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Order retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  # Payment Endpoints
+  /api/payments/payments:
+    post:
+      tags:
+        - Payments
+      summary: Process a payment
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - orderId
+                - amount
+                - paymentMethod
+              properties:
+                orderId:
+                  type: string
+                  format: uuid
+                amount:
+                  type: number
+                  format: float
+                currency:
+                  type: string
+                  default: USD
+                paymentMethod:
+                  type: string
+                  enum: [credit_card, debit_card, paypal, bank_transfer]
+      responses:
+        '201':
+          description: Payment processed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Payment'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  # Inventory Endpoints
+  /api/inventory/product/{productId}:
+    get:
+      tags:
+        - Inventory
+      summary: Get inventory for a product
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Inventory retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Inventory'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /api/inventory/verify:
+    post:
+      tags:
+        - Inventory
+      summary: Verify inventory availability
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      productId:
+                        type: string
+                        format: uuid
+                      quantity:
+                        type: integer
+      responses:
+        '200':
+          description: Inventory verification result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'

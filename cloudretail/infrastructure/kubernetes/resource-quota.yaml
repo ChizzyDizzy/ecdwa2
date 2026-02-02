@@ -1,0 +1,109 @@
+# Resource Quota for CloudRetail Namespace
+# Defines resource limits for the entire namespace to prevent resource exhaustion
+
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: cloudretail-resource-quota
+  namespace: cloudretail
+  labels:
+    app: cloudretail
+    component: resource-management
+spec:
+  hard:
+    # Compute Resources
+    requests.cpu: "50"
+    requests.memory: "100Gi"
+    limits.cpu: "100"
+    limits.memory: "200Gi"
+
+    # Storage Resources
+    requests.storage: "500Gi"
+    persistentvolumeclaims: "20"
+
+    # Object Count Limits
+    pods: "200"
+    services: "50"
+    configmaps: "20"
+    secrets: "20"
+    replicationcontrollers: "20"
+    deployments.apps: "30"
+    statefulsets.apps: "15"
+
+---
+# Limit Range for default resource constraints
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: cloudretail-limit-range
+  namespace: cloudretail
+  labels:
+    app: cloudretail
+    component: resource-management
+spec:
+  limits:
+  # Container limits
+  - type: Container
+    max:
+      cpu: "2"
+      memory: "4Gi"
+    min:
+      cpu: "50m"
+      memory: "64Mi"
+    default:
+      cpu: "500m"
+      memory: "512Mi"
+    defaultRequest:
+      cpu: "200m"
+      memory: "256Mi"
+
+  # Pod limits
+  - type: Pod
+    max:
+      cpu: "4"
+      memory: "8Gi"
+
+  # PVC limits
+  - type: PersistentVolumeClaim
+    max:
+      storage: "100Gi"
+    min:
+      storage: "1Gi"
+
+---
+# Priority Classes for pod scheduling
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: cloudretail-critical
+value: 1000000
+globalDefault: false
+description: "Priority class for critical CloudRetail services (API Gateway, Order, Payment)"
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: cloudretail-high
+value: 100000
+globalDefault: false
+description: "Priority class for high-priority CloudRetail services"
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: cloudretail-normal
+value: 10000
+globalDefault: true
+description: "Priority class for normal CloudRetail services"
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: cloudretail-low
+value: 1000
+globalDefault: false
+description: "Priority class for low-priority CloudRetail services (background jobs)"

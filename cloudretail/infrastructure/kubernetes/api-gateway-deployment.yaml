@@ -1,0 +1,223 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: cloudretail
+  labels:
+    app: api-gateway
+    component: gateway
+    version: v1
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+        component: gateway
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - api-gateway
+              topologyKey: kubernetes.io/hostname
+      containers:
+      - name: api-gateway
+        image: cloudretail/api-gateway:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: NODE_ENV
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: API_GATEWAY_PORT
+        - name: USER_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: USER_SERVICE_URL
+        - name: PRODUCT_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: PRODUCT_SERVICE_URL
+        - name: ORDER_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: ORDER_SERVICE_URL
+        - name: INVENTORY_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: INVENTORY_SERVICE_URL
+        - name: PAYMENT_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: PAYMENT_SERVICE_URL
+        - name: ALLOWED_ORIGINS
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: ALLOWED_ORIGINS
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: cloudretail-config
+              key: LOG_LEVEL
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: cloudretail-secrets
+              key: JWT_SECRET
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 15"]
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: cloudretail
+  labels:
+    app: api-gateway
+    component: gateway
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  - port: 443
+    targetPort: 8080
+    protocol: TCP
+    name: https
+  selector:
+    app: api-gateway
+  sessionAffinity: ClientIP
+  sessionAffinityConfig:
+    clientIP:
+      timeoutSeconds: 10800
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway-internal
+  namespace: cloudretail
+  labels:
+    app: api-gateway
+    component: gateway
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: api-gateway
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: api-gateway-hpa
+  namespace: cloudretail
+  labels:
+    app: api-gateway
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-gateway
+  minReplicas: 3
+  maxReplicas: 20
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 0
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+      - type: Pods
+        value: 4
+        periodSeconds: 30
+      selectPolicy: Max

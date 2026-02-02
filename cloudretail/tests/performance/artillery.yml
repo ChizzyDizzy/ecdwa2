@@ -1,0 +1,243 @@
+config:
+  target: "http://localhost:3000"
+  phases:
+    # Warm up phase
+    - duration: 60
+      arrivalRate: 5
+      name: "Warm up"
+
+    # Ramp up phase
+    - duration: 120
+      arrivalRate: 5
+      rampTo: 50
+      name: "Ramp up load"
+
+    # Sustained load phase
+    - duration: 300
+      arrivalRate: 50
+      name: "Sustained load"
+
+    # Spike test
+    - duration: 60
+      arrivalRate: 100
+      name: "Spike test"
+
+    # Cool down
+    - duration: 60
+      arrivalRate: 10
+      name: "Cool down"
+
+  processor: "./load-test-functions.js"
+
+  # Performance thresholds
+  ensure:
+    maxErrorRate: 1 # Max 1% error rate
+    p95: 500 # 95th percentile response time should be under 500ms
+    p99: 1000 # 99th percentile response time should be under 1000ms
+
+  # HTTP settings
+  http:
+    timeout: 10
+    pool: 50 # Connection pool size
+
+  # Variables
+  variables:
+    baseUrl: "http://localhost:3000"
+
+  # Payload definitions
+  payload:
+    path: "./test-data.csv"
+    fields:
+      - "email"
+      - "password"
+      - "firstName"
+      - "lastName"
+    skipHeader: true
+    order: "sequence"
+
+scenarios:
+  # Scenario 1: User Registration and Login
+  - name: "User Registration and Login Flow"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/users/register"
+          json:
+            email: "{{ $randomString() }}@example.com"
+            password: "TestPassword123!"
+            firstName: "{{ $randomString() }}"
+            lastName: "{{ $randomString() }}"
+            gdprConsent: true
+          capture:
+            json: "$.data.id"
+            as: "userId"
+          expect:
+            - statusCode: 201
+
+      - think: 2
+
+      - post:
+          url: "/api/users/login"
+          json:
+            email: "{{ email }}"
+            password: "{{ password }}"
+          capture:
+            json: "$.data.token"
+            as: "authToken"
+          expect:
+            - statusCode: 200
+            - hasProperty: "data.token"
+
+  # Scenario 2: Product Browsing
+  - name: "Product Browsing and Search"
+    weight: 40
+    flow:
+      - get:
+          url: "/api/products"
+          qs:
+            limit: 20
+            offset: 0
+          expect:
+            - statusCode: 200
+
+      - think: 1
+
+      - get:
+          url: "/api/products/search"
+          qs:
+            searchTerm: "laptop"
+            category: "electronics"
+          expect:
+            - statusCode: 200
+
+      - think: 2
+
+      - get:
+          url: "/api/products/{{ $randomNumber(1, 100) }}"
+          expect:
+            - statusCode:
+                - 200
+                - 404
+
+  # Scenario 3: Order Creation Flow
+  - name: "Complete Order Flow"
+    weight: 30
+    flow:
+      # Login first
+      - post:
+          url: "/api/users/login"
+          json:
+            email: "test@example.com"
+            password: "TestPassword123!"
+          capture:
+            json: "$.data.token"
+            as: "authToken"
+            json: "$.data.user.id"
+            as: "userId"
+
+      - think: 2
+
+      # Browse products
+      - get:
+          url: "/api/products"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          capture:
+            json: "$.data.products[0].id"
+            as: "productId"
+
+      - think: 3
+
+      # Check inventory
+      - get:
+          url: "/api/inventory/product/{{ productId }}"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+
+      - think: 2
+
+      # Create order
+      - post:
+          url: "/api/orders"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            userId: "{{ userId }}"
+            items:
+              - productId: "{{ productId }}"
+                quantity: 1
+                price: 99.99
+            shippingAddress:
+              street: "123 Test St"
+              city: "Test City"
+              state: "TS"
+              zipCode: "12345"
+              country: "USA"
+          capture:
+            json: "$.data.id"
+            as: "orderId"
+            json: "$.data.totalAmount"
+            as: "orderAmount"
+
+      - think: 5
+
+      # Process payment
+      - post:
+          url: "/api/payments"
+          headers:
+            Authorization: "Bearer {{ authToken }}"
+          json:
+            orderId: "{{ orderId }}"
+            userId: "{{ userId }}"
+            amount: "{{ orderAmount }}"
+            currency: "USD"
+            paymentMethod: "credit_card"
+            metadata:
+              cardNumber: "4111111111111111"
+              expiryMonth: "12"
+              expiryYear: "2025"
+              cvv: "123"
+
+  # Scenario 4: API Health Checks
+  - name: "Health Check Monitoring"
+    weight: 10
+    flow:
+      - get:
+          url: "/health"
+          expect:
+            - statusCode: 200
+
+      - get:
+          url: "/api/users/health"
+          expect:
+            - statusCode:
+                - 200
+                - 503
+
+      - get:
+          url: "/api/products/health"
+          expect:
+            - statusCode:
+                - 200
+                - 503
+
+      - get:
+          url: "/api/orders/health"
+          expect:
+            - statusCode:
+                - 200
+                - 503
+
+      - get:
+          url: "/api/inventory/health"
+          expect:
+            - statusCode:
+                - 200
+                - 503
+
+      - get:
+          url: "/api/payments/health"
+          expect:
+            - statusCode:
+                - 200
+                - 503

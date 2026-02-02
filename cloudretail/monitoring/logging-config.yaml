@@ -1,0 +1,488 @@
+# Logging Stack Configuration for CloudRetail
+# EFK (Elasticsearch, Fluentd, Kibana) / ELK (Elasticsearch, Logstash, Kibana) Stack
+# This configuration supports both centralized logging architectures
+
+---
+# Fluentd Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-config
+  namespace: cloudretail
+  labels:
+    app: fluentd
+data:
+  fluent.conf: |
+    # Input sources
+    <source>
+      @type forward
+      port 24224
+      bind 0.0.0.0
+    </source>
+
+    # Container logs from Kubernetes
+    <source>
+      @type tail
+      @id in_tail_container_logs
+      path /var/log/containers/*.log
+      pos_file /var/log/fluentd-containers.log.pos
+      tag kubernetes.*
+      read_from_head true
+      <parse>
+        @type json
+        time_format %Y-%m-%dT%H:%M:%S.%NZ
+        time_key time
+        keep_time_key true
+      </parse>
+    </source>
+
+    # Filter to parse and enrich logs
+    <filter kubernetes.**>
+      @type kubernetes_metadata
+      @id filter_kube_metadata
+      kubernetes_url "#{ENV['FLUENT_FILTER_KUBERNETES_URL'] || 'https://' + ENV.fetch('KUBERNETES_SERVICE_HOST') + ':' + ENV.fetch('KUBERNETES_SERVICE_PORT') + '/api'}"
+      verify_ssl "#{ENV['KUBERNETES_VERIFY_SSL'] || true}"
+      ca_file "#{ENV['KUBERNETES_CA_FILE']}"
+    </filter>
+
+    # Parse application logs
+    <filter kubernetes.**cloudretail**>
+      @type parser
+      key_name log
+      reserve_data true
+      emit_invalid_record_to_error false
+      <parse>
+        @type json
+        time_key timestamp
+        time_format %Y-%m-%dT%H:%M:%S.%LZ
+      </parse>
+    </filter>
+
+    # Add service-specific tags
+    <filter kubernetes.**>
+      @type record_transformer
+      <record>
+        cluster_name ${CLUSTER_NAME}
+        environment ${ENVIRONMENT}
+        service_name ${record["kubernetes"]["labels"]["app"]}
+        service_tier ${record["kubernetes"]["labels"]["tier"]}
+        namespace ${record["kubernetes"]["namespace_name"]}
+        pod_name ${record["kubernetes"]["pod_name"]}
+        container_name ${record["kubernetes"]["container_name"]}
+      </record>
+    </filter>
+
+    # Error log highlighting
+    <filter kubernetes.**>
+      @type grep
+      <regexp>
+        key level
+        pattern /(error|ERROR|fatal|FATAL|panic|PANIC)/
+      </regexp>
+    </filter>
+
+    # Output to Elasticsearch
+    <match kubernetes.**>
+      @type elasticsearch
+      @id out_es
+      @log_level info
+      include_tag_key true
+      host "#{ENV['FLUENT_ELASTICSEARCH_HOST'] || 'elasticsearch'}"
+      port "#{ENV['FLUENT_ELASTICSEARCH_PORT'] || '9200'}"
+      path "#{ENV['FLUENT_ELASTICSEARCH_PATH'] || ''}"
+      scheme "#{ENV['FLUENT_ELASTICSEARCH_SCHEME'] || 'http'}"
+      ssl_verify "#{ENV['FLUENT_ELASTICSEARCH_SSL_VERIFY'] || 'true'}"
+      ssl_version "#{ENV['FLUENT_ELASTICSEARCH_SSL_VERSION'] || 'TLSv1_2'}"
+      user "#{ENV['FLUENT_ELASTICSEARCH_USER'] || ''}"
+      password "#{ENV['FLUENT_ELASTICSEARCH_PASSWORD'] || ''}"
+      reload_connections false
+      reconnect_on_error true
+      reload_on_failure true
+      log_es_400_reason true
+      logstash_prefix "cloudretail-${environment}"
+      logstash_dateformat %Y.%m.%d
+      logstash_format true
+      index_name cloudretail
+      type_name _doc
+      <buffer>
+        @type file
+        path /var/log/fluentd-buffers/kubernetes.system.buffer
+        flush_mode interval
+        retry_type exponential_backoff
+        flush_thread_count 2
+        flush_interval 5s
+        retry_forever false
+        retry_max_interval 30
+        chunk_limit_size 2M
+        queue_limit_length 8
+        overflow_action block
+      </buffer>
+    </match>
+
+    # Output to stdout for debugging
+    <match **>
+      @type stdout
+    </match>
+
+---
+# Logstash Configuration (Alternative to Fluentd)
+logstash:
+  config: |
+    input {
+      beats {
+        port => 5044
+      }
+      tcp {
+        port => 5000
+        codec => json
+      }
+      http {
+        port => 8080
+        codec => json
+      }
+    }
+
+    filter {
+      # Parse JSON logs
+      if [message] =~ /^\{.*\}$/ {
+        json {
+          source => "message"
+        }
+      }
+
+      # Add geo-location for IP addresses
+      if [client_ip] {
+        geoip {
+          source => "client_ip"
+          target => "geoip"
+        }
+      }
+
+      # Parse common log patterns
+      grok {
+        match => {
+          "message" => [
+            "%{TIMESTAMP_ISO8601:timestamp} %{LOGLEVEL:level} \[%{DATA:service}\] %{GREEDYDATA:log_message}",
+            "%{COMBINEDAPACHELOG}"
+          ]
+        }
+      }
+
+      # Convert timestamp
+      date {
+        match => [ "timestamp", "ISO8601" ]
+        target => "@timestamp"
+      }
+
+      # Add service metadata
+      mutate {
+        add_field => {
+          "environment" => "${ENVIRONMENT:production}"
+          "cluster" => "${CLUSTER_NAME:cloudretail}"
+        }
+      }
+
+      # Tag error logs
+      if [level] in ["ERROR", "FATAL", "PANIC"] {
+        mutate {
+          add_tag => [ "error" ]
+        }
+      }
+
+      # Tag slow queries
+      if [duration] and [duration] > 1000 {
+        mutate {
+          add_tag => [ "slow_query" ]
+        }
+      }
+
+      # Tag security events
+      if [status] in [401, 403] {
+        mutate {
+          add_tag => [ "security" ]
+        }
+      }
+
+      # Remove unnecessary fields
+      mutate {
+        remove_field => [ "beat", "offset", "prospector", "source" ]
+      }
+    }
+
+    output {
+      elasticsearch {
+        hosts => ["${ELASTICSEARCH_HOST:elasticsearch:9200}"]
+        user => "${ELASTICSEARCH_USER:}"
+        password => "${ELASTICSEARCH_PASSWORD:}"
+        index => "cloudretail-%{environment}-%{+YYYY.MM.dd}"
+        template_name => "cloudretail"
+        template_overwrite => true
+      }
+
+      # Output errors to separate index
+      if "error" in [tags] {
+        elasticsearch {
+          hosts => ["${ELASTICSEARCH_HOST:elasticsearch:9200}"]
+          index => "cloudretail-errors-%{+YYYY.MM.dd}"
+        }
+      }
+
+      # Output security events to separate index
+      if "security" in [tags] {
+        elasticsearch {
+          hosts => ["${ELASTICSEARCH_HOST:elasticsearch:9200}"]
+          index => "cloudretail-security-%{+YYYY.MM.dd}"
+        }
+      }
+
+      # Debug output
+      if "${DEBUG:false}" == "true" {
+        stdout {
+          codec => rubydebug
+        }
+      }
+    }
+
+---
+# Elasticsearch Index Templates
+elasticsearch:
+  index_templates:
+    cloudretail:
+      index_patterns:
+        - "cloudretail-*"
+      settings:
+        number_of_shards: 3
+        number_of_replicas: 1
+        refresh_interval: "5s"
+        index:
+          lifecycle:
+            name: cloudretail-logs-policy
+            rollover_alias: cloudretail-logs
+      mappings:
+        properties:
+          "@timestamp":
+            type: date
+          level:
+            type: keyword
+          service:
+            type: keyword
+          message:
+            type: text
+            fields:
+              keyword:
+                type: keyword
+                ignore_above: 256
+          environment:
+            type: keyword
+          cluster:
+            type: keyword
+          namespace:
+            type: keyword
+          pod_name:
+            type: keyword
+          container_name:
+            type: keyword
+          duration:
+            type: long
+          status:
+            type: integer
+          method:
+            type: keyword
+          path:
+            type: keyword
+          user_id:
+            type: keyword
+          request_id:
+            type: keyword
+          trace_id:
+            type: keyword
+          span_id:
+            type: keyword
+          error:
+            type: object
+            properties:
+              message:
+                type: text
+              stack:
+                type: text
+              type:
+                type: keyword
+
+  # Index Lifecycle Management Policy
+  ilm_policy:
+    cloudretail-logs-policy:
+      phases:
+        hot:
+          min_age: "0ms"
+          actions:
+            rollover:
+              max_age: "1d"
+              max_size: "50gb"
+            set_priority:
+              priority: 100
+        warm:
+          min_age: "7d"
+          actions:
+            readonly: {}
+            allocate:
+              number_of_replicas: 1
+            set_priority:
+              priority: 50
+        cold:
+          min_age: "30d"
+          actions:
+            allocate:
+              number_of_replicas: 0
+            freeze: {}
+            set_priority:
+              priority: 0
+        delete:
+          min_age: "90d"
+          actions:
+            delete: {}
+
+---
+# Kibana Configuration
+kibana:
+  server:
+    name: cloudretail-kibana
+    host: "0.0.0.0"
+    port: 5601
+
+  elasticsearch:
+    hosts:
+      - "http://elasticsearch:9200"
+    username: "${ELASTICSEARCH_USER:}"
+    password: "${ELASTICSEARCH_PASSWORD:}"
+
+  # Saved Searches
+  saved_searches:
+    - id: errors-last-24h
+      title: "Errors (Last 24h)"
+      query: 'level:ERROR OR level:FATAL'
+      time_from: "now-24h"
+      time_to: "now"
+
+    - id: slow-requests
+      title: "Slow Requests (>1s)"
+      query: 'duration:>1000'
+      time_from: "now-1h"
+      time_to: "now"
+
+    - id: security-events
+      title: "Security Events"
+      query: 'status:(401 OR 403) OR tags:security'
+      time_from: "now-24h"
+      time_to: "now"
+
+  # Dashboards
+  dashboards:
+    - id: cloudretail-overview
+      title: "CloudRetail - Logs Overview"
+      panels:
+        - type: histogram
+          title: "Log Volume Over Time"
+          field: "@timestamp"
+
+        - type: pie
+          title: "Logs by Service"
+          field: "service"
+
+        - type: pie
+          title: "Logs by Level"
+          field: "level"
+
+        - type: data_table
+          title: "Recent Errors"
+          query: "level:ERROR"
+          columns:
+            - "@timestamp"
+            - "service"
+            - "message"
+            - "error.type"
+
+---
+# Filebeat Configuration (For shipping logs to Logstash/Elasticsearch)
+filebeat:
+  inputs:
+    - type: container
+      paths:
+        - "/var/lib/docker/containers/*/*.log"
+      processors:
+        - add_kubernetes_metadata:
+            host: "${NODE_NAME}"
+            matchers:
+              - logs_path:
+                  logs_path: "/var/lib/docker/containers/"
+
+    - type: log
+      enabled: true
+      paths:
+        - "/var/log/cloudretail/*.log"
+      fields:
+        environment: "${ENVIRONMENT:production}"
+        cluster: "${CLUSTER_NAME:cloudretail}"
+      fields_under_root: true
+      json:
+        keys_under_root: true
+        add_error_key: true
+        message_key: message
+
+  processors:
+    - add_host_metadata:
+        netinfo.enabled: false
+
+    - add_cloud_metadata: ~
+
+    - add_docker_metadata: ~
+
+    - drop_event:
+        when:
+          regexp:
+            message: "^\\s*$"
+
+  output:
+    logstash:
+      hosts: ["${LOGSTASH_HOST:logstash:5044}"]
+      loadbalance: true
+      compression_level: 3
+
+    # Alternative: Direct to Elasticsearch
+    # elasticsearch:
+    #   hosts: ["${ELASTICSEARCH_HOST:elasticsearch:9200}"]
+    #   username: "${ELASTICSEARCH_USER:}"
+    #   password: "${ELASTICSEARCH_PASSWORD:}"
+    #   index: "cloudretail-%{+yyyy.MM.dd}"
+
+  logging:
+    level: info
+    to_files: true
+    files:
+      path: /var/log/filebeat
+      name: filebeat
+      keepfiles: 7
+      permissions: 0644
+
+---
+# Docker Compose Logging Driver Configuration
+docker-compose-logging:
+  services:
+    default:
+      logging:
+        driver: "fluentd"
+        options:
+          fluentd-address: "localhost:24224"
+          fluentd-async: "true"
+          tag: "docker.{{.Name}}"
+          labels: "service,environment"
+          env: "SERVICE_NAME,ENVIRONMENT"
+
+    # Alternative: JSON file with log rotation
+    alternative:
+      logging:
+        driver: "json-file"
+        options:
+          max-size: "10m"
+          max-file: "3"
+          labels: "service,environment"
+          env: "SERVICE_NAME,ENVIRONMENT"
