@@ -66,9 +66,19 @@ export class UserService {
 
       logger.info('User registered successfully', { userId: user.id });
 
-      // Return user without password
-      const { password, twoFactorSecret, ...userWithoutPassword } = user.toJSON();
-      return userWithoutPassword;
+      // Generate JWT token so user is authenticated immediately after registration
+      const token = generateToken({
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+      });
+
+      // Return token and user without password
+      const { password: _pw, twoFactorSecret: _ts, ...userWithoutPassword } = user.toJSON();
+      return {
+        token,
+        user: userWithoutPassword,
+      };
     } catch (error) {
       logger.error('Error registering user', { error });
       throw error;
