@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CloudRetail - Pixel Store</title>
+  <link rel="stylesheet" href="styles.css">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Scanline overlay -->
+  <div class="scanlines"></div>
+
+  <!-- Navigation -->
+  <nav class="pixel-nav">
+    <div class="nav-container">
+      <div class="nav-logo" onclick="navigate('home')">
+        <span class="logo-icon">[ CR ]</span>
+        <span class="logo-text">CloudRetail</span>
+      </div>
+      <div class="nav-links">
+        <button class="nav-btn active" data-page="home" onclick="navigate('home')">SHOP</button>
+        <button class="nav-btn" data-page="cart" onclick="navigate('cart')">
+          CART <span id="cart-count" class="badge">0</span>
+        </button>
+        <button class="nav-btn" data-page="orders" onclick="navigate('orders')">ORDERS</button>
+        <button class="nav-btn" data-page="inventory" onclick="navigate('inventory')">STOCK</button>
+        <button class="nav-btn" data-page="admin" onclick="navigate('admin')">ADMIN</button>
+      </div>
+      <div class="nav-user">
+        <div id="user-info" class="hidden">
+          <span id="user-name" class="pixel-text-sm"></span>
+          <button class="pixel-btn pixel-btn-sm pixel-btn-danger" onclick="logout()">LOG OUT</button>
+        </div>
+        <div id="auth-buttons">
+          <button class="pixel-btn pixel-btn-sm" onclick="showModal('login')">LOG IN</button>
+          <button class="pixel-btn pixel-btn-sm pixel-btn-primary" onclick="showModal('register')">SIGN UP</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Status Bar -->
+  <div class="status-bar">
+    <div class="status-bar-inner">
+      <span class="status-item">
+        <span class="status-dot" id="api-status"></span>
+        API Gateway
+      </span>
+      <span class="status-item">
+        <span class="status-dot" id="db-status"></span>
+        Databases
+      </span>
+      <span class="status-item">
+        <span class="status-dot" id="kafka-status"></span>
+        Event Bus
+      </span>
+      <span class="status-item status-region">
+        AWS Region: eu-west-1
+      </span>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <main class="main-content">
+
+    <!-- HOME / PRODUCT CATALOG -->
+    <section id="page-home" class="page active">
+      <div class="page-header">
+        <h1 class="pixel-title">PRODUCT CATALOG</h1>
+        <p class="pixel-subtitle">Browse items from our distributed microservices</p>
+      </div>
+
+      <!-- Search & Filter -->
+      <div class="search-bar pixel-box">
+        <input type="text" id="search-input" class="pixel-input" placeholder="Search products..." onkeyup="searchProducts()">
+        <select id="category-filter" class="pixel-select" onchange="filterProducts()">
+          <option value="">ALL CATEGORIES</option>
+          <option value="electronics">Electronics</option>
+          <option value="clothing">Clothing</option>
+          <option value="books">Books</option>
+          <option value="home">Home & Garden</option>
+          <option value="sports">Sports</option>
+        </select>
+        <button class="pixel-btn pixel-btn-primary" onclick="loadProducts()">REFRESH</button>
+      </div>
+
+      <!-- Products Grid -->
+      <div id="products-grid" class="products-grid">
+        <!-- Populated by JS -->
+      </div>
+      <div id="products-loading" class="loading-container">
+        <div class="pixel-loader"></div>
+        <p>Loading products from Product Service (port 3002)...</p>
+      </div>
+    </section>
+
+    <!-- CART -->
+    <section id="page-cart" class="page">
+      <div class="page-header">
+        <h1 class="pixel-title">SHOPPING CART</h1>
+        <p class="pixel-subtitle">Review your items before checkout</p>
+      </div>
+      <div id="cart-items" class="cart-container">
+        <!-- Populated by JS -->
+      </div>
+      <div id="cart-empty" class="empty-state">
+        <div class="empty-icon">[ ]</div>
+        <p>Your cart is empty!</p>
+        <button class="pixel-btn pixel-btn-primary" onclick="navigate('home')">BROWSE PRODUCTS</button>
+      </div>
+      <div id="cart-summary" class="cart-summary pixel-box hidden">
+        <div class="summary-row">
+          <span>SUBTOTAL:</span>
+          <span id="cart-subtotal">$0.00</span>
+        </div>
+        <div class="summary-row">
+          <span>SHIPPING:</span>
+          <span>$5.99</span>
+        </div>
+        <div class="summary-row total">
+          <span>TOTAL:</span>
+          <span id="cart-total">$5.99</span>
+        </div>
+        <div class="shipping-input">
+          <label class="pixel-label">SHIPPING ADDRESS:</label>
+          <input type="text" id="shipping-address" class="pixel-input" placeholder="123 Pixel Street, Cloud City">
+        </div>
+        <button class="pixel-btn pixel-btn-primary pixel-btn-lg" onclick="placeOrder()">PLACE ORDER</button>
+        <p class="cart-note">Order processed via Order Service (port 3003) + Inventory Service (port 3004) + Payment Service (port 3005)</p>
+      </div>
+    </section>
+
+    <!-- ORDERS -->
+    <section id="page-orders" class="page">
+      <div class="page-header">
+        <h1 class="pixel-title">MY ORDERS</h1>
+        <p class="pixel-subtitle">Track your order history via the Order Service</p>
+      </div>
+      <div id="orders-list" class="orders-container">
+        <!-- Populated by JS -->
+      </div>
+      <div id="orders-empty" class="empty-state hidden">
+        <div class="empty-icon">0</div>
+        <p>No orders yet! Start shopping.</p>
+        <button class="pixel-btn pixel-btn-primary" onclick="navigate('home')">BROWSE PRODUCTS</button>
+      </div>
+      <div id="orders-login-prompt" class="empty-state">
+        <div class="empty-icon">?</div>
+        <p>Log in to view your orders</p>
+        <button class="pixel-btn pixel-btn-primary" onclick="showModal('login')">LOG IN</button>
+      </div>
+    </section>
+
+    <!-- INVENTORY / STOCK -->
+    <section id="page-inventory" class="page">
+      <div class="page-header">
+        <h1 class="pixel-title">INVENTORY STATUS</h1>
+        <p class="pixel-subtitle">Real-time stock levels from Inventory Service (port 3004)</p>
+      </div>
+      <div class="inventory-info pixel-box">
+        <p>Stock levels are synchronized in real-time across all microservices using <strong>Apache Kafka</strong> on <strong>AWS MSK</strong>. When an order is placed, the Inventory Service reserves stock via the Saga pattern.</p>
+      </div>
+      <div id="inventory-table-container">
+        <table class="pixel-table" id="inventory-table">
+          <thead>
+            <tr>
+              <th>PRODUCT</th>
+              <th>SKU</th>
+              <th>IN STOCK</th>
+              <th>RESERVED</th>
+              <th>AVAILABLE</th>
+              <th>STATUS</th>
+            </tr>
+          </thead>
+          <tbody id="inventory-tbody">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ADMIN DASHBOARD -->
+    <section id="page-admin" class="page">
+      <div class="page-header">
+        <h1 class="pixel-title">ADMIN DASHBOARD</h1>
+        <p class="pixel-subtitle">System overview - AWS Cloud Infrastructure</p>
+      </div>
+
+      <!-- Service Health -->
+      <div class="admin-grid">
+        <div class="pixel-box admin-card">
+          <h3 class="card-title">MICROSERVICES</h3>
+          <div id="service-health">
+            <div class="service-row"><span class="status-dot green"></span> User Service :3001</div>
+            <div class="service-row"><span class="status-dot green"></span> Product Service :3002</div>
+            <div class="service-row"><span class="status-dot green"></span> Order Service :3003</div>
+            <div class="service-row"><span class="status-dot green"></span> Inventory Service :3004</div>
+            <div class="service-row"><span class="status-dot green"></span> Payment Service :3005</div>
+            <div class="service-row"><span class="status-dot green"></span> Event Bus :4000</div>
+            <div class="service-row"><span class="status-dot green"></span> API Gateway :8080</div>
+          </div>
+        </div>
+
+        <div class="pixel-box admin-card">
+          <h3 class="card-title">AWS SERVICES</h3>
+          <div class="aws-services">
+            <div class="aws-row"><span class="aws-badge">EKS</span> Kubernetes Cluster</div>
+            <div class="aws-row"><span class="aws-badge">ECR</span> Container Registry</div>
+            <div class="aws-row"><span class="aws-badge">RDS</span> PostgreSQL x5</div>
+            <div class="aws-row"><span class="aws-badge">MSK</span> Kafka Cluster</div>
+            <div class="aws-row"><span class="aws-badge">ElastiCache</span> Redis Cache</div>
+            <div class="aws-row"><span class="aws-badge">S3</span> Asset Storage</div>
+            <div class="aws-row"><span class="aws-badge">CloudFront</span> CDN</div>
+            <div class="aws-row"><span class="aws-badge">ALB</span> Load Balancer</div>
+            <div class="aws-row"><span class="aws-badge">Route 53</span> DNS</div>
+            <div class="aws-row"><span class="aws-badge">CloudWatch</span> Monitoring</div>
+          </div>
+        </div>
+
+        <div class="pixel-box admin-card">
+          <h3 class="card-title">SYSTEM METRICS</h3>
+          <div class="metrics-grid">
+            <div class="metric">
+              <div class="metric-value" id="metric-throughput">1,247</div>
+              <div class="metric-label">REQ/SEC</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value" id="metric-latency">423</div>
+              <div class="metric-label">P95 (MS)</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value" id="metric-error">0.3%</div>
+              <div class="metric-label">ERROR RATE</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value" id="metric-uptime">99.9%</div>
+              <div class="metric-label">UPTIME</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="pixel-box admin-card">
+          <h3 class="card-title">ARCHITECTURE</h3>
+          <div class="arch-diagram">
+            <pre class="pixel-pre">
+  [Client Browser]
+        |
+   [AWS CloudFront CDN]
+        |
+   [AWS ALB]
+        |
+  [API Gateway :8080]
+   /    |    |    \
+  US   PROD  ORD  INV  PAY
+  :01  :02   :03  :04  :05
+   |    |     |    |    |
+  [PostgreSQL on AWS RDS]
+        |
+  [Kafka on AWS MSK]
+        |
+  [Redis on AWS ElastiCache]
+            </pre>
+          </div>
+        </div>
+
+        <div class="pixel-box admin-card">
+          <h3 class="card-title">SECURITY</h3>
+          <div class="security-list">
+            <div class="security-row ok">JWT Authentication (24h expiry)</div>
+            <div class="security-row ok">bcrypt Password Hashing (12 rounds)</div>
+            <div class="security-row ok">TOTP Two-Factor Auth</div>
+            <div class="security-row ok">RBAC (customer/vendor/admin)</div>
+            <div class="security-row ok">TLS 1.3 via AWS ACM</div>
+            <div class="security-row ok">AES-256 Encryption (AWS KMS)</div>
+            <div class="security-row ok">Rate Limiting (100 req/15min)</div>
+            <div class="security-row ok">Helmet.js Security Headers</div>
+            <div class="security-row ok">GDPR Compliance</div>
+            <div class="security-row ok">PCI DSS Compliance</div>
+          </div>
+        </div>
+
+        <div class="pixel-box admin-card">
+          <h3 class="card-title">EVENT LOG</h3>
+          <div id="event-log" class="event-log">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Login Modal -->
+  <div id="modal-login" class="modal hidden">
+    <div class="modal-content pixel-box">
+      <div class="modal-header">
+        <h2>LOG IN</h2>
+        <button class="modal-close" onclick="closeModal('login')">X</button>
+      </div>
+      <form onsubmit="handleLogin(event)">
+        <div class="form-group">
+          <label class="pixel-label">EMAIL:</label>
+          <input type="email" id="login-email" class="pixel-input" placeholder="player@cloudretail.com" required>
+        </div>
+        <div class="form-group">
+          <label class="pixel-label">PASSWORD:</label>
+          <input type="password" id="login-password" class="pixel-input" placeholder="********" required>
+        </div>
+        <div id="login-error" class="error-msg hidden"></div>
+        <button type="submit" class="pixel-btn pixel-btn-primary pixel-btn-lg">LOG IN</button>
+      </form>
+      <p class="modal-footer-text">Authenticated via User Service on AWS EKS</p>
+    </div>
+  </div>
+
+  <!-- Register Modal -->
+  <div id="modal-register" class="modal hidden">
+    <div class="modal-content pixel-box">
+      <div class="modal-header">
+        <h2>CREATE ACCOUNT</h2>
+        <button class="modal-close" onclick="closeModal('register')">X</button>
+      </div>
+      <form onsubmit="handleRegister(event)">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="pixel-label">FIRST NAME:</label>
+            <input type="text" id="reg-firstname" class="pixel-input" placeholder="Player" required>
+          </div>
+          <div class="form-group">
+            <label class="pixel-label">LAST NAME:</label>
+            <input type="text" id="reg-lastname" class="pixel-input" placeholder="One" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="pixel-label">EMAIL:</label>
+          <input type="email" id="reg-email" class="pixel-input" placeholder="player@cloudretail.com" required>
+        </div>
+        <div class="form-group">
+          <label class="pixel-label">PASSWORD:</label>
+          <input type="password" id="reg-password" class="pixel-input" placeholder="Min 8 characters" required minlength="8">
+        </div>
+        <div class="form-group">
+          <label class="pixel-checkbox">
+            <input type="checkbox" id="reg-gdpr" required>
+            <span class="checkmark"></span>
+            I consent to GDPR data processing
+          </label>
+        </div>
+        <div id="register-error" class="error-msg hidden"></div>
+        <button type="submit" class="pixel-btn pixel-btn-primary pixel-btn-lg">CREATE ACCOUNT</button>
+      </form>
+      <p class="modal-footer-text">Data stored in PostgreSQL on AWS RDS, GDPR compliant</p>
+    </div>
+  </div>
+
+  <!-- Order Success Modal -->
+  <div id="modal-order-success" class="modal hidden">
+    <div class="modal-content pixel-box modal-success">
+      <div class="success-icon">OK!</div>
+      <h2>ORDER PLACED!</h2>
+      <p id="order-success-msg">Your order has been processed through the distributed microservices pipeline.</p>
+      <div class="order-pipeline">
+        <div class="pipeline-step done">Order Service</div>
+        <div class="pipeline-arrow">--&gt;</div>
+        <div class="pipeline-step done">Inventory Reserved</div>
+        <div class="pipeline-arrow">--&gt;</div>
+        <div class="pipeline-step done">Payment Processed</div>
+        <div class="pipeline-arrow">--&gt;</div>
+        <div class="pipeline-step done">Kafka Event Published</div>
+      </div>
+      <button class="pixel-btn pixel-btn-primary" onclick="closeModal('order-success'); navigate('orders');">VIEW ORDERS</button>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Footer -->
+  <footer class="pixel-footer">
+    <div class="footer-inner">
+      <div class="footer-col">
+        <h4>CLOUDRETAIL PLATFORM</h4>
+        <p>Enterprise-grade cloud-native e-commerce built with microservices on AWS.</p>
+      </div>
+      <div class="footer-col">
+        <h4>TECH STACK</h4>
+        <p>Node.js / TypeScript / Express / PostgreSQL / Redis / Kafka / Docker / Kubernetes</p>
+      </div>
+      <div class="footer-col">
+        <h4>AWS SERVICES</h4>
+        <p>EKS / ECR / RDS / MSK / ElastiCache / S3 / CloudFront / ALB / Route 53 / CloudWatch</p>
+      </div>
+      <div class="footer-col">
+        <h4>COMP60010</h4>
+        <p>Enterprise Cloud and Distributed Web Applications - Staffordshire University</p>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>CloudRetail Platform v1.0.0</span>
+      <span>Deployed on AWS EKS</span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

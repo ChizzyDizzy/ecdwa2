@@ -21,6 +21,25 @@ This document maps each assignment criterion to the specific technologies, AWS s
 
 ---
 
+## Frontend Demo Application
+
+The CloudRetail platform includes a **pixelated retro-themed frontend** that connects to the API Gateway and demonstrates the full microservices architecture in action. It is served via **AWS CloudFront CDN** in production and runs as a separate NGINX container on **AWS EKS**.
+
+| Feature | Implementation | Where in Codebase |
+|---|---|---|
+| Pixelated retro UI | HTML5 + CSS3 with `Press Start 2P` pixel font, scanline overlay, neon color palette | `frontend/public/index.html`, `frontend/public/styles.css` |
+| Product catalog | Fetches from Product Service via API Gateway; client-side search and filtering | `frontend/public/app.js` (loadProducts, searchProducts) |
+| Shopping cart | Local state management with localStorage persistence | `frontend/public/app.js` (cart functions) |
+| Order placement | Creates order via Order Service, triggering Saga (Inventory + Payment + Kafka) | `frontend/public/app.js` (placeOrder) |
+| User auth | JWT login/register via User Service with GDPR consent | `frontend/public/app.js` (handleLogin, handleRegister) |
+| Inventory dashboard | Real-time stock levels from Inventory Service | `frontend/public/app.js` (loadInventory) |
+| Admin dashboard | Service health, AWS service map, live metrics, architecture diagram, event log | `frontend/public/index.html` (page-admin) |
+| Live event log | Simulated Kafka event stream showing distributed system activity | `frontend/public/app.js` (startEventLog) |
+| Containerized | NGINX 1.25 Alpine serving static files, Kubernetes Deployment + Service | `frontend/Dockerfile`, `frontend/nginx.conf`, `infrastructure/kubernetes/frontend-deployment.yaml` |
+| CDN delivery | Static assets served via **AWS CloudFront** with 7-day cache headers | `frontend/nginx.conf` |
+
+---
+
 ## 1. Cloud-Based Architecture Design
 
 **Criterion:** Design and implement a cloud-based web application architecture.
@@ -38,6 +57,7 @@ This document maps each assignment criterion to the specific technologies, AWS s
 | In-memory caching | Redis 7 for session storage, API response caching, and pub/sub — deployable on **AWS ElastiCache** | `docker-compose.yml` (lines 86-96), `infrastructure/kubernetes/redis-deployment.yaml` |
 | Message broker | Apache Kafka 7.5 with Zookeeper — deployable on **AWS MSK (Managed Streaming for Kafka)** | `docker-compose.yml` (lines 98-124), `infrastructure/kubernetes/kafka-statefulset.yaml` |
 | Single entry point | Custom API Gateway (Express.js on port 8080) with routing, auth, and rate limiting — fronted by **AWS Application Load Balancer (ALB)** | `api-gateway/src/` |
+| Frontend UI | Pixelated retro-themed SPA served by NGINX on port 3000, delivered via **AWS CloudFront CDN**, deployed on **AWS EKS** | `frontend/public/`, `frontend/Dockerfile`, `infrastructure/kubernetes/frontend-deployment.yaml` |
 | Serverless patterns | Event-driven Kafka triggers for async processing — extensible to **AWS Lambda** for scheduled tasks (inventory reconciliation, report generation) | `event-bus/src/`, event handlers in each service |
 
 ### Key AWS Services for This Criterion
@@ -326,7 +346,8 @@ This document maps each assignment criterion to the specific technologies, AWS s
 | Persistent storage | Kubernetes Persistent Volumes via **AWS EBS** for database StatefulSets | `infrastructure/kubernetes/postgres-statefulset.yaml` |
 | Ingress / external access | NGINX Ingress Controller with TLS — fronted by **AWS ALB Ingress Controller** | `infrastructure/kubernetes/ingress.yaml` |
 | Network policies | Zero-trust network model restricting inter-service traffic | `infrastructure/kubernetes/network-policy.yaml` |
-| Container image management | Multi-stage Docker builds pushed to **AWS ECR** | `services/*/Dockerfile` |
+| Frontend deployment | NGINX container serving static SPA, Kubernetes Deployment with 2 replicas — on **AWS EKS** behind **AWS CloudFront** | `frontend/Dockerfile`, `infrastructure/kubernetes/frontend-deployment.yaml` |
+| Container image management | Multi-stage Docker builds pushed to **AWS ECR** | `services/*/Dockerfile`, `frontend/Dockerfile` |
 | DNS management | **AWS Route 53** for domain routing and failover | Infrastructure configuration |
 | CI/CD pipeline | **AWS CodePipeline** + **AWS CodeBuild** + **AWS CodeDeploy** for automated build-test-deploy | Pipeline configuration |
 
