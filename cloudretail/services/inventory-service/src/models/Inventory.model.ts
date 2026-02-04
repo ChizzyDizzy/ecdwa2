@@ -1,4 +1,4 @@
-import { Model, DataTypes, Sequelize } from 'sequelize';
+import { Model, DataTypes, Sequelize, Optional } from 'sequelize';
 
 export interface InventoryAttributes {
   id: string;
@@ -10,7 +10,9 @@ export interface InventoryAttributes {
   updatedAt?: Date;
 }
 
-export class Inventory extends Model<InventoryAttributes> implements InventoryAttributes {
+export interface InventoryCreationAttributes extends Optional<InventoryAttributes, 'id' | 'quantity' | 'reservedQuantity' | 'createdAt' | 'updatedAt'> {}
+
+export class Inventory extends Model<InventoryAttributes, InventoryCreationAttributes> implements InventoryAttributes {
   public id!: string;
   public productId!: string;
   public quantity!: number;
@@ -79,7 +81,7 @@ export function initInventoryModel(sequelize: Sequelize): typeof Inventory {
         },
       ],
       validate: {
-        reservedNotGreaterThanTotal() {
+        reservedNotGreaterThanTotal(this: InventoryAttributes) {
           if (this.reservedQuantity > this.quantity) {
             throw new Error('Reserved quantity cannot be greater than total quantity');
           }

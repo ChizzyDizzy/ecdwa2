@@ -1,4 +1,4 @@
-import { Model, DataTypes, Sequelize } from 'sequelize';
+import { Model, DataTypes, Sequelize, Optional } from 'sequelize';
 
 export interface PaymentAttributes {
   id: string;
@@ -16,7 +16,9 @@ export interface PaymentAttributes {
   updatedAt?: Date;
 }
 
-export class Payment extends Model<PaymentAttributes> implements PaymentAttributes {
+export interface PaymentCreationAttributes extends Optional<PaymentAttributes, 'id' | 'currency' | 'status' | 'pciCompliant' | 'transactionId' | 'metadata' | 'failureReason' | 'createdAt' | 'updatedAt'> {}
+
+export class Payment extends Model<PaymentAttributes, PaymentCreationAttributes> implements PaymentAttributes {
   public id!: string;
   public orderId!: string;
   public userId!: string;

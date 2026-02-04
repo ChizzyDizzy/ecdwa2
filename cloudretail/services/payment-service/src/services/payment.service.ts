@@ -263,12 +263,12 @@ export class PaymentService {
       throw new NotFoundError('Payment');
     }
 
-    if (payment.status !== 'completed') {
-      throw new ValidationError('Only completed payments can be refunded');
-    }
-
     if (payment.status === 'refunded') {
       throw new ValidationError('Payment has already been refunded');
+    }
+
+    if (payment.status !== 'completed') {
+      throw new ValidationError('Only completed payments can be refunded');
     }
 
     // Process refund with gateway
@@ -363,7 +363,7 @@ export class PaymentService {
     // Update status to processing
     await payment.update({
       status: 'processing',
-      failureReason: null,
+      failureReason: undefined,
     });
 
     // Process payment with gateway

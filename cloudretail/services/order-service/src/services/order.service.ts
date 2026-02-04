@@ -1,4 +1,5 @@
-import { Order, OrderItem } from '../config/database';
+import { Order } from '../config/database';
+import { OrderItem } from '../models/Order.model';
 import {
   NotFoundError,
   ValidationError,
@@ -44,7 +45,7 @@ export class OrderService {
         return false;
       }
 
-      const result = await response.json();
+      const result: any = await response.json();
       return result.success && result.data.available;
     } catch (error) {
       logger.error('Error verifying inventory', { error });
@@ -69,7 +70,7 @@ export class OrderService {
         return false;
       }
 
-      const result = await response.json();
+      const result: any = await response.json();
       return result.success;
     } catch (error) {
       logger.error('Error reserving inventory', { error });
