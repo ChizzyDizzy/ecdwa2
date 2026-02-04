@@ -10,17 +10,18 @@ This guide walks you through setting up the entire CloudRetail platform from scr
 
 1. [Prerequisites - What You Need to Install](#1-prerequisites---what-you-need-to-install)
 2. [Clone the Repository](#2-clone-the-repository)
-3. [Understand the Project Structure](#3-understand-the-project-structure)
-4. [Local Development Setup (Docker Compose)](#4-local-development-setup-docker-compose)
-5. [Running Individual Services (Without Docker)](#5-running-individual-services-without-docker)
-6. [Running the Tests](#6-running-the-tests)
-7. [AWS Cloud Setup](#7-aws-cloud-setup)
-8. [Deploying to AWS EKS (Kubernetes)](#8-deploying-to-aws-eks-kubernetes)
-9. [Setting Up Monitoring on AWS](#9-setting-up-monitoring-on-aws)
-10. [Setting Up CI/CD on AWS](#10-setting-up-cicd-on-aws)
-11. [Verifying Everything Works](#11-verifying-everything-works)
-12. [Common Issues and Troubleshooting](#12-common-issues-and-troubleshooting)
-13. [Useful Commands Reference](#13-useful-commands-reference)
+3. [Quick Start - Get the Frontend Running](#3-quick-start---get-the-frontend-running)
+4. [Understand the Project Structure](#4-understand-the-project-structure)
+5. [Local Development Setup (Docker Compose)](#5-local-development-setup-docker-compose)
+6. [Running Individual Services (Without Docker)](#6-running-individual-services-without-docker)
+7. [Running the Tests](#7-running-the-tests)
+8. [AWS Cloud Setup](#8-aws-cloud-setup)
+9. [Deploying to AWS EKS (Kubernetes)](#9-deploying-to-aws-eks-kubernetes)
+10. [Setting Up Monitoring on AWS](#10-setting-up-monitoring-on-aws)
+11. [Setting Up CI/CD on AWS](#11-setting-up-cicd-on-aws)
+12. [Verifying Everything Works](#12-verifying-everything-works)
+13. [Common Issues and Troubleshooting](#13-common-issues-and-troubleshooting)
+14. [Useful Commands Reference](#14-useful-commands-reference)
 
 ---
 
@@ -115,7 +116,83 @@ This uses npm workspaces to install dependencies for:
 
 ---
 
-## 3. Understand the Project Structure
+## 3. Quick Start - Get the Frontend Running
+
+The fastest way to see the CloudRetail frontend is using **Docker Compose**, which starts the pixelated retro UI along with all backend microservices, databases, and infrastructure in one command.
+
+### Option A: Full Stack with Docker Compose (Recommended)
+
+This starts the frontend, all 7 backend services, 5 PostgreSQL databases, Redis, and Kafka:
+
+```bash
+cd cloudretail
+
+# 1. Install all dependencies
+npm run install:all
+
+# 2. Build all Docker images (frontend + backend services)
+npm run docker:build
+
+# 3. Start everything
+npm run docker:up
+
+# 4. Open the frontend in your browser
+#    http://localhost:3000
+```
+
+The frontend is a static HTML/CSS/JS application served by an **NGINX Alpine** container. It connects to the API Gateway at `http://localhost:8080` which routes requests to the backend microservices. The UI features a pixelated retro theme with product browsing, user authentication, cart management, and order placement.
+
+> **Troubleshooting:** If the Docker build fails with a cache error, run `docker builder prune -f` and then `npm run docker:build` again.
+
+### Option B: Frontend Only (Static Files)
+
+If you just want to preview the frontend without backend services, you can open the HTML file directly:
+
+```bash
+# Simply open the file in your browser:
+# cloudretail/frontend/public/index.html
+
+# Or serve it with any static file server:
+npx serve cloudretail/frontend/public -p 3000
+```
+
+> **Note:** Without the backend services running, API calls (login, products, orders) will fail. This is only useful for inspecting the UI layout and design.
+
+### Option C: Frontend with Docker Only
+
+If you want to run just the frontend container:
+
+```bash
+cd cloudretail
+
+# Build only the frontend image
+docker build -t cloudretail-frontend -f frontend/Dockerfile frontend/
+
+# Run the frontend container on port 3000
+docker run -p 3000:80 cloudretail-frontend
+```
+
+Then open **http://localhost:3000** in your browser. The frontend NGINX container serves the static files (HTML, CSS, JavaScript) and proxies API requests to the gateway. For the API calls to work, you still need the backend services running (use `npm run docker:up` for the full stack).
+
+### Frontend Files
+
+```
+frontend/
+├── public/
+│   ├── index.html    → Main HTML page with pixelated retro UI
+│   ├── styles.css    → CSS styles (pixel fonts, retro color scheme)
+│   └── app.js        → JavaScript (API calls, cart logic, auth)
+├── Dockerfile        → NGINX Alpine container config
+└── nginx.conf        → NGINX server configuration (port 80, API proxy)
+```
+
+### AWS Deployment
+
+In production, the frontend is deployed as a container on **AWS EKS** alongside the backend services, and served via an **AWS Application Load Balancer (ALB)**. The NGINX config proxies `/api/*` requests to the API Gateway service within the Kubernetes cluster. See [Section 9: Deploying to AWS EKS](#9-deploying-to-aws-eks-kubernetes) for full deployment instructions.
+
+---
+
+## 4. Understand the Project Structure
 
 ```
 cloudretail/
@@ -145,7 +222,7 @@ cloudretail/
 
 ---
 
-## 4. Local Development Setup (Docker Compose)
+## 5. Local Development Setup (Docker Compose)
 
 This is the fastest way to get everything running. Docker Compose starts all 15 containers (8 services including the frontend + 5 PostgreSQL databases + Redis + Kafka/Zookeeper).
 
@@ -238,7 +315,7 @@ docker-compose down -v
 
 ---
 
-## 5. Running Individual Services (Without Docker)
+## 6. Running Individual Services (Without Docker)
 
 If you want to run services directly on your machine for faster development:
 
@@ -302,7 +379,7 @@ EVENT_BUS_URL=http://localhost:4000/events  # Event bus endpoint
 
 ---
 
-## 6. Running the Tests
+## 7. Running the Tests
 
 ### Unit Tests (605 tests, 85% coverage)
 
@@ -347,7 +424,7 @@ npm test
 
 ---
 
-## 7. AWS Cloud Setup
+## 8. AWS Cloud Setup
 
 This section covers setting up the AWS infrastructure needed to run CloudRetail in the cloud.
 
@@ -481,7 +558,7 @@ aws secretsmanager create-secret \
 
 ---
 
-## 8. Deploying to AWS EKS (Kubernetes)
+## 9. Deploying to AWS EKS (Kubernetes)
 
 ### Step 1: Push Docker images to AWS ECR
 
@@ -615,7 +692,7 @@ aws route53 create-hosted-zone \
 
 ---
 
-## 9. Setting Up Monitoring on AWS
+## 10. Setting Up Monitoring on AWS
 
 ### 9.1 AWS Managed Prometheus (Metrics)
 
@@ -675,7 +752,7 @@ aws sns subscribe \
 
 ---
 
-## 10. Setting Up CI/CD on AWS
+## 11. Setting Up CI/CD on AWS
 
 ### Using AWS CodePipeline
 
@@ -715,7 +792,7 @@ phases:
 
 ---
 
-## 11. Verifying Everything Works
+## 12. Verifying Everything Works
 
 ### Local Verification
 
@@ -756,7 +833,7 @@ curl https://cloudretail.example.com/health
 
 ---
 
-## 12. Common Issues and Troubleshooting
+## 13. Common Issues and Troubleshooting
 
 ### "Port already in use"
 
@@ -828,7 +905,7 @@ npm run install:all
 
 ---
 
-## 13. Useful Commands Reference
+## 14. Useful Commands Reference
 
 ### Docker Commands
 
