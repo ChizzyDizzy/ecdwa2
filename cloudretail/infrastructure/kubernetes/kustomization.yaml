@@ -33,6 +33,9 @@ resources:
   - event-bus-deployment.yaml
   - api-gateway-deployment.yaml
 
+  # Frontend
+  - frontend-deployment.yaml
+
   # Networking
   - ingress.yaml
   - network-policy.yaml
@@ -60,6 +63,8 @@ images:
   - name: cloudretail/event-bus
     newTag: latest
   - name: cloudretail/api-gateway
+    newTag: latest
+  - name: cloudretail/frontend
     newTag: latest
 
 commonLabels:
@@ -104,3 +109,5 @@ replicas:
     count: 3
   - name: api-gateway
     count: 3
+  - name: frontend
+    count: 2

@@ -24,6 +24,7 @@ CloudRetail is a production-ready, enterprise-grade e-commerce platform built on
 
 ### Key Features
 
+- **Pixelated Retro Frontend**: Retro-themed demo UI showcasing the full platform in action
 - **Microservices Architecture**: 5 independent, scalable services with clear domain boundaries
 - **Event-Driven Design**: Asynchronous communication using Kafka for loose coupling
 - **Cloud-Native**: Kubernetes-ready with auto-scaling, health checks, and rolling deployments
@@ -90,6 +91,7 @@ npm run docker:up
 docker-compose ps
 
 # Access the platform
+# Frontend UI: http://localhost:3000  (open this in your browser)
 # API Gateway: http://localhost:8080
 # User Service: http://localhost:3001
 # Product Service: http://localhost:3002
@@ -223,6 +225,11 @@ graph TB
 
 ```
 cloudretail/
+├── frontend/                 # Pixelated retro UI (NGINX, port 3000)
+│   ├── public/               # HTML, CSS, JS static files
+│   ├── Dockerfile            # NGINX Alpine container
+│   └── nginx.conf            # NGINX server config
+│
 ├── api-gateway/              # API Gateway service
 │   ├── src/
 │   │   ├── index.ts          # Gateway entry point

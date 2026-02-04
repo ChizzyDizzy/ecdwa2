@@ -119,6 +119,10 @@ This uses npm workspaces to install dependencies for:
 
 ```
 cloudretail/
+├── frontend/              → Pixelated retro UI (NGINX on port 3000)
+│   ├── public/            → HTML, CSS, JS static files
+│   ├── Dockerfile         → NGINX Alpine container
+│   └── nginx.conf         → NGINX server config
 ├── api-gateway/           → Single entry point for all API requests (port 8080)
 ├── services/
 │   ├── user-service/      → User registration, login, JWT auth (port 3001)
@@ -143,7 +147,7 @@ cloudretail/
 
 ## 4. Local Development Setup (Docker Compose)
 
-This is the fastest way to get everything running. Docker Compose starts all 14 containers (7 services + 5 PostgreSQL databases + Redis + Kafka/Zookeeper).
+This is the fastest way to get everything running. Docker Compose starts all 15 containers (8 services including the frontend + 5 PostgreSQL databases + Redis + Kafka/Zookeeper).
 
 ### Step 1: Build all Docker images
 
@@ -221,13 +225,16 @@ docker-compose down -v
 
 | Service | URL | Purpose |
 |---|---|---|
-| API Gateway | http://localhost:8080 | Main entry point for all requests |
+| **Frontend** | **http://localhost:3000** | **Main UI - open this in your browser** |
+| API Gateway | http://localhost:8080 | Backend API entry point |
 | User Service | http://localhost:3001 | Direct access (bypasses gateway) |
 | Product Service | http://localhost:3002 | Direct access |
 | Order Service | http://localhost:3003 | Direct access |
 | Inventory Service | http://localhost:3004 | Direct access |
 | Payment Service | http://localhost:3005 | Direct access |
 | Event Bus | http://localhost:4000 | Event routing service |
+
+**To use the application:** Open http://localhost:3000 in your browser. The pixelated retro UI will connect to the API Gateway at port 8080 to fetch products, handle authentication, and place orders through the distributed microservices.
 
 ---
 
@@ -400,6 +407,7 @@ aws ecr create-repository --repository-name cloudretail/inventory-service --regi
 aws ecr create-repository --repository-name cloudretail/payment-service --region eu-west-1
 aws ecr create-repository --repository-name cloudretail/event-bus --region eu-west-1
 aws ecr create-repository --repository-name cloudretail/api-gateway --region eu-west-1
+aws ecr create-repository --repository-name cloudretail/frontend --region eu-west-1
 ```
 
 ### 7.5 Create AWS RDS Databases
@@ -489,13 +497,14 @@ docker tag cloudretail/user-service:latest <AWS_ACCOUNT_ID>.dkr.ecr.eu-west-1.am
 # Push to ECR:
 docker push <AWS_ACCOUNT_ID>.dkr.ecr.eu-west-1.amazonaws.com/cloudretail/user-service:latest
 
-# Repeat for all 7 services:
+# Repeat for all 8 services:
 # cloudretail/product-service
 # cloudretail/order-service
 # cloudretail/inventory-service
 # cloudretail/payment-service
 # cloudretail/event-bus
 # cloudretail/api-gateway
+# cloudretail/frontend
 ```
 
 ### Step 2: Update Kubernetes manifests with AWS resource endpoints
@@ -553,6 +562,7 @@ kubectl apply -f inventory-service-deployment.yaml
 kubectl apply -f payment-service-deployment.yaml
 kubectl apply -f event-bus-deployment.yaml
 kubectl apply -f api-gateway-deployment.yaml
+kubectl apply -f frontend-deployment.yaml
 kubectl apply -f hpa.yaml
 kubectl apply -f network-policy.yaml
 kubectl apply -f ingress.yaml
@@ -823,11 +833,12 @@ npm run install:all
 ### Docker Commands
 
 ```bash
-npm run docker:build          # Build all images
+npm run docker:build          # Build all images (including frontend)
 npm run docker:up             # Start all containers
 npm run docker:down           # Stop all containers
 docker-compose ps             # List running containers
 docker-compose logs -f        # Tail all logs
+docker-compose logs -f frontend  # Tail frontend logs
 docker-compose down -v        # Stop and delete all data
 ```
 

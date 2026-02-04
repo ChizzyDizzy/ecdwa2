@@ -75,28 +75,49 @@ spec:
             port:
               number: 8080
 
-  # Web Application
+  # Web Application (Frontend)
   - host: cloudretail.example.com
     http:
       paths:
-      - path: /
+      - path: /api
         pathType: Prefix
         backend:
           service:
             name: api-gateway
             port:
               number: 8080
+      - path: /health
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 8080
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 3000
 
   - host: www.cloudretail.example.com
     http:
       paths:
-      - path: /
+      - path: /api
         pathType: Prefix
         backend:
           service:
             name: api-gateway
             port:
               number: 8080
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 3000
 
 ---
 # Cert-Manager ClusterIssuer for Let's Encrypt (Production)
