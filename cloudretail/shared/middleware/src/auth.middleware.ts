@@ -105,7 +105,7 @@ export const authorize = (...allowedRoles: string[]) => {
 export const generateToken = (payload: Omit<JwtPayload, 'iat' | 'exp'>): string => {
   return jwt.sign(payload, JWT_SECRET, {
     expiresIn: JWT_EXPIRY,
-  });
+  } as jwt.SignOptions);
 };
 
 /**

@@ -36,7 +36,7 @@ export function createCircuitBreaker<T extends (...args: any[]) => Promise<any>>
     logger.info('Circuit breaker closed', { name: breaker.name });
   });
 
-  breaker.on('failure', (error) => {
+  breaker.on('failure', (error: Error) => {
     logger.error('Circuit breaker failure', {
       name: breaker.name,
       error: error.message,
