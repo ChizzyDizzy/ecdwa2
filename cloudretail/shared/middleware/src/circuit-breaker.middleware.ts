@@ -55,7 +55,7 @@ export function createCircuitBreaker<T extends (...args: any[]) => Promise<any>>
     logger.warn('Circuit breaker rejected request', { name: breaker.name });
   });
 
-  return breaker;
+  return breaker as unknown as CircuitBreaker<Parameters<T>, ReturnType<T>>;
 }
 
 /**
