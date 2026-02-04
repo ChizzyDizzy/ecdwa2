@@ -27,8 +27,8 @@ app.use(gdprCompliance);
 
 healthCheck.registerCheck('database', async () => {
   try {
-    const { sequelize } = await import('./config/database');
-    await sequelize.authenticate();
+    const db = await import('./config/database');
+    await db.default.authenticate();
     return true;
   } catch {
     return false;

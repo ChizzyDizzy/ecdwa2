@@ -112,13 +112,21 @@ export const EventTypeEnum = z.enum([
   'product.created',
   'product.updated',
   'product.deleted',
+  'inventory.created',
   'inventory.updated',
   'inventory.low_stock',
+  'inventory.reserved',
+  'inventory.released',
+  'inventory.out_of_stock',
   'order.created',
   'order.updated',
   'order.cancelled',
+  'order.confirmed',
+  'order.status_updated',
+  'payment.initiated',
   'payment.completed',
   'payment.failed',
+  'payment.refunded',
 ]);
 
 export const EventSchema = z.object({

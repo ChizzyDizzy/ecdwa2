@@ -1,4 +1,4 @@
-import { Model, DataTypes, Sequelize } from 'sequelize';
+import { Model, DataTypes, Sequelize, Optional } from 'sequelize';
 
 export interface ProductAttributes {
   id: string;
@@ -13,7 +13,9 @@ export interface ProductAttributes {
   updatedAt?: Date;
 }
 
-export class Product extends Model<ProductAttributes> implements ProductAttributes {
+export interface ProductCreationAttributes extends Optional<ProductAttributes, 'id' | 'isActive' | 'createdAt' | 'updatedAt'> {}
+
+export class Product extends Model<ProductAttributes, ProductCreationAttributes> implements ProductAttributes {
   public id!: string;
   public name!: string;
   public description!: string;

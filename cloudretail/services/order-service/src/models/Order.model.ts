@@ -1,8 +1,8 @@
-import { Model, DataTypes, Sequelize } from 'sequelize';
+import { Model, DataTypes, Sequelize, Optional } from 'sequelize';
 
 export interface OrderItem {
   productId: string;
-  productName: string;
+  productName?: string;
   quantity: number;
   price: number;
   subtotal: number;
@@ -26,7 +26,9 @@ export interface OrderAttributes {
   updatedAt?: Date;
 }
 
-export class Order extends Model<OrderAttributes> implements OrderAttributes {
+export interface OrderCreationAttributes extends Optional<OrderAttributes, 'id' | 'status' | 'paymentId' | 'createdAt' | 'updatedAt'> {}
+
+export class Order extends Model<OrderAttributes, OrderCreationAttributes> implements OrderAttributes {
   public id!: string;
   public userId!: string;
   public items!: OrderItem[];
