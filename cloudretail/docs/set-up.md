@@ -30,7 +30,8 @@ Install these before starting:
 | Node.js | 20.x | `node --version` |
 | npm | 9.x+ | `npm --version` |
 | AWS CLI | 2.x | `aws --version` |
-| psql (PostgreSQL client) | 15.x | `psql --version` |
+
+**psql is NOT required.** For the one step that needs it (creating databases on RDS), you can use Docker instead. See step 5.4.
 
 **AWS CLI configuration** (run once):
 
@@ -281,10 +282,10 @@ echo "RDS Host: $RDS_HOST"
 
 ### 5.4 Create the remaining 4 databases
 
-Connect to the instance and create all databases:
+Use Docker to run psql (no local install needed):
 
 ```bash
-PGPASSWORD=CloudRetail2026db psql -h $RDS_HOST -U postgres -d cloudretail_users -c "
+docker run --rm -e PGPASSWORD=CloudRetail2026db postgres:15-alpine psql -h $RDS_HOST -U postgres -d cloudretail_users -c "
   CREATE DATABASE cloudretail_products;
   CREATE DATABASE cloudretail_orders;
   CREATE DATABASE cloudretail_inventory;
@@ -295,7 +296,7 @@ PGPASSWORD=CloudRetail2026db psql -h $RDS_HOST -U postgres -d cloudretail_users 
 **Verify all 5 databases exist:**
 
 ```bash
-PGPASSWORD=CloudRetail2026db psql -h $RDS_HOST -U postgres -d cloudretail_users -c "\l" | grep cloudretail
+docker run --rm -e PGPASSWORD=CloudRetail2026db postgres:15-alpine psql -h $RDS_HOST -U postgres -d cloudretail_users -c "\l" | grep cloudretail
 ```
 
 You should see 5 databases listed:
