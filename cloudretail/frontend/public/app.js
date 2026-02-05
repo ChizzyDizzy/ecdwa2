@@ -143,16 +143,10 @@ async function handleLogin(e) {
     showToast('Welcome back, ' + state.user.firstName + '!', 'success');
     addEventLogEntry('USER_LOGIN', state.user.email + ' authenticated via JWT');
   } else {
-    // Demo mode fallback
-    const demoUser = { id: 'demo-user', firstName: 'Demo', lastName: 'User', email: email, role: 'customer' };
-    state.token = 'demo-token-' + Date.now();
-    state.user = demoUser;
-    localStorage.setItem('cr_token', state.token);
-    localStorage.setItem('cr_user', JSON.stringify(state.user));
-    updateAuthUI();
-    closeModal('login');
-    showToast('Logged in (demo mode - backend not connected)', 'info');
-    addEventLogEntry('USER_LOGIN', 'Demo login - User Service offline');
+    const errMsg = (res.data && res.data.error && res.data.error.message) || 'Login failed';
+    const errorEl = document.getElementById('login-error');
+    errorEl.textContent = errMsg;
+    errorEl.classList.remove('hidden');
   }
 }
 
@@ -172,16 +166,27 @@ async function handleRegister(e) {
   });
 
   if (res.ok && res.data) {
-    closeModal('register');
-    showToast('Account created! You can now log in.', 'success');
-    addEventLogEntry('USER_REGISTERED', email + ' - GDPR consent recorded');
-    showModal('login');
+    const d = res.data.data || res.data;
+    if (d.token) {
+      state.token = d.token;
+      state.user = d.user;
+      localStorage.setItem('cr_token', state.token);
+      localStorage.setItem('cr_user', JSON.stringify(state.user));
+      updateAuthUI();
+      closeModal('register');
+      showToast('Account created! Welcome, ' + (state.user.firstName || email) + '!', 'success');
+      addEventLogEntry('USER_REGISTERED', email + ' - GDPR consent recorded, JWT issued');
+    } else {
+      closeModal('register');
+      showToast('Account created! You can now log in.', 'success');
+      addEventLogEntry('USER_REGISTERED', email + ' - GDPR consent recorded');
+      showModal('login');
+    }
   } else {
-    // Demo fallback
-    closeModal('register');
-    showToast('Account created (demo mode)', 'info');
-    addEventLogEntry('USER_REGISTERED', email + ' - demo mode');
-    showModal('login');
+    const errMsg = (res.data && res.data.error && res.data.error.message) || 'Registration failed';
+    const errorEl = document.getElementById('register-error');
+    errorEl.textContent = errMsg;
+    errorEl.classList.remove('hidden');
   }
 }
 
@@ -225,11 +230,12 @@ async function loadProducts() {
 
   let products;
   if (res.ok && res.data && res.data.data) {
-    products = Array.isArray(res.data.data) ? res.data.data : res.data.data.products || [];
+    const d = res.data.data;
+    products = Array.isArray(d) ? d : d.products || [];
     addEventLogEntry('PRODUCTS_LOADED', products.length + ' items from Product Service');
   } else {
-    products = DEMO_PRODUCTS;
-    addEventLogEntry('PRODUCTS_LOADED', 'Using demo catalog (Product Service offline)');
+    products = [];
+    addEventLogEntry('PRODUCTS_LOADED', 'Product Service offline');
   }
 
   state.products = products;
