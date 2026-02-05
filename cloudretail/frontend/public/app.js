@@ -17,38 +17,6 @@ let state = {
   currentPage: 'home',
 };
 
-// ==================== DEMO DATA ====================
-// Fallback products when backend is not running
-const DEMO_PRODUCTS = [
-  { id: 'p001', name: 'Wireless Gaming Headset', description: 'Premium 7.1 surround sound headset with RGB lighting and noise cancellation.', price: 79.99, category: 'electronics', sku: 'WGH-001', vendorId: 'v001', isActive: true },
-  { id: 'p002', name: 'Mechanical Keyboard RGB', description: 'Cherry MX Blue switches, full RGB backlight, aluminium frame.', price: 129.99, category: 'electronics', sku: 'MKR-002', vendorId: 'v001', isActive: true },
-  { id: 'p003', name: 'Ultra-Wide Monitor 34"', description: '34-inch curved display, 3440x1440, 144Hz refresh rate, HDR400.', price: 449.99, category: 'electronics', sku: 'UWM-003', vendorId: 'v002', isActive: true },
-  { id: 'p004', name: 'Cloud Architecture Handbook', description: 'Comprehensive guide to designing scalable cloud systems on AWS.', price: 34.99, category: 'books', sku: 'CAH-004', vendorId: 'v003', isActive: true },
-  { id: 'p005', name: 'Microservices Patterns', description: 'Practical patterns for building event-driven distributed systems.', price: 44.99, category: 'books', sku: 'MSP-005', vendorId: 'v003', isActive: true },
-  { id: 'p006', name: 'Developer Hoodie - Black', description: 'Premium cotton blend hoodie, perfect for late-night coding sessions.', price: 59.99, category: 'clothing', sku: 'DHB-006', vendorId: 'v004', isActive: true },
-  { id: 'p007', name: 'Standing Desk Electric', description: 'Electric height-adjustable desk, memory presets, cable management.', price: 349.99, category: 'home', sku: 'SDE-007', vendorId: 'v005', isActive: true },
-  { id: 'p008', name: 'Ergonomic Office Chair', description: 'Mesh back, lumbar support, adjustable armrests, 5-year warranty.', price: 299.99, category: 'home', sku: 'EOC-008', vendorId: 'v005', isActive: true },
-  { id: 'p009', name: 'Fitness Tracker Pro', description: 'Heart rate, GPS, sleep tracking, 7-day battery, waterproof.', price: 89.99, category: 'sports', sku: 'FTP-009', vendorId: 'v006', isActive: true },
-  { id: 'p010', name: 'Yoga Mat Premium', description: 'Extra thick, non-slip surface, eco-friendly materials, carry strap.', price: 29.99, category: 'sports', sku: 'YMP-010', vendorId: 'v006', isActive: true },
-  { id: 'p011', name: 'USB-C Docking Station', description: 'Triple display support, 100W PD charging, 10Gbps data transfer.', price: 159.99, category: 'electronics', sku: 'UCD-011', vendorId: 'v001', isActive: true },
-  { id: 'p012', name: 'Kubernetes in Action', description: 'Deep dive into container orchestration with real-world examples.', price: 39.99, category: 'books', sku: 'KIA-012', vendorId: 'v003', isActive: true },
-];
-
-const DEMO_INVENTORY = [
-  { productId: 'p001', productName: 'Wireless Gaming Headset', sku: 'WGH-001', quantity: 150, reservedQuantity: 12 },
-  { productId: 'p002', productName: 'Mechanical Keyboard RGB', sku: 'MKR-002', quantity: 85, reservedQuantity: 5 },
-  { productId: 'p003', productName: 'Ultra-Wide Monitor 34"', sku: 'UWM-003', quantity: 30, reservedQuantity: 8 },
-  { productId: 'p004', productName: 'Cloud Architecture Handbook', sku: 'CAH-004', quantity: 500, reservedQuantity: 0 },
-  { productId: 'p005', productName: 'Microservices Patterns', sku: 'MSP-005', quantity: 320, reservedQuantity: 3 },
-  { productId: 'p006', productName: 'Developer Hoodie - Black', sku: 'DHB-006', quantity: 200, reservedQuantity: 15 },
-  { productId: 'p007', productName: 'Standing Desk Electric', sku: 'SDE-007', quantity: 8, reservedQuantity: 2 },
-  { productId: 'p008', productName: 'Ergonomic Office Chair', sku: 'EOC-008', quantity: 22, reservedQuantity: 4 },
-  { productId: 'p009', productName: 'Fitness Tracker Pro', sku: 'FTP-009', quantity: 175, reservedQuantity: 20 },
-  { productId: 'p010', productName: 'Yoga Mat Premium', sku: 'YMP-010', quantity: 0, reservedQuantity: 0 },
-  { productId: 'p011', productName: 'USB-C Docking Station', sku: 'UCD-011', quantity: 60, reservedQuantity: 7 },
-  { productId: 'p012', productName: 'Kubernetes in Action', sku: 'KIA-012', quantity: 410, reservedQuantity: 1 },
-];
-
 const CATEGORY_ICONS = {
   electronics: '&#x1F3AE;',
   books: '&#x1F4DA;',
@@ -62,15 +30,28 @@ const CATEGORY_ICONS = {
 document.addEventListener('DOMContentLoaded', () => {
   updateAuthUI();
   updateCartCount();
-  loadProducts();
+
+  // Require login before showing content
+  if (!state.token || !state.user) {
+    showModal('login');
+  } else {
+    loadProducts();
+  }
+
   checkServiceHealth();
   startEventLog();
-  // Check health periodically
   setInterval(checkServiceHealth, 30000);
 });
 
 // ==================== NAVIGATION ====================
 function navigate(page) {
+  // Require login for all pages except viewing the login/register modals
+  if (!state.token && page !== 'home') {
+    showToast('Please log in first', 'error');
+    showModal('login');
+    return;
+  }
+
   state.currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
@@ -81,7 +62,6 @@ function navigate(page) {
   const btn = document.querySelector(`.nav-btn[data-page="${page}"]`);
   if (btn) btn.classList.add('active');
 
-  // Load data for specific pages
   if (page === 'orders') loadOrders();
   if (page === 'inventory') loadInventory();
   if (page === 'admin') refreshAdminPanel();
@@ -133,6 +113,7 @@ async function handleLogin(e) {
     closeModal('login');
     showToast('Welcome back, ' + state.user.firstName + '!', 'success');
     addEventLogEntry('USER_LOGIN', state.user.email + ' authenticated via JWT');
+    loadProducts();
   } else if (res.ok && res.data && res.data.token) {
     state.token = res.data.token;
     state.user = res.data.user;
@@ -142,9 +123,9 @@ async function handleLogin(e) {
     closeModal('login');
     showToast('Welcome back, ' + state.user.firstName + '!', 'success');
     addEventLogEntry('USER_LOGIN', state.user.email + ' authenticated via JWT');
+    loadProducts();
   } else {
     const errMsg = (res.data && res.data.error && res.data.error.message) || 'Login failed';
-    const errorEl = document.getElementById('login-error');
     errorEl.textContent = errMsg;
     errorEl.classList.remove('hidden');
   }
@@ -176,6 +157,7 @@ async function handleRegister(e) {
       closeModal('register');
       showToast('Account created! Welcome, ' + (state.user.firstName || email) + '!', 'success');
       addEventLogEntry('USER_REGISTERED', email + ' - GDPR consent recorded, JWT issued');
+      loadProducts();
     } else {
       closeModal('register');
       showToast('Account created! You can now log in.', 'success');
@@ -184,7 +166,6 @@ async function handleRegister(e) {
     }
   } else {
     const errMsg = (res.data && res.data.error && res.data.error.message) || 'Registration failed';
-    const errorEl = document.getElementById('register-error');
     errorEl.textContent = errMsg;
     errorEl.classList.remove('hidden');
   }
@@ -199,6 +180,7 @@ function logout() {
   showToast('Logged out successfully', 'info');
   addEventLogEntry('USER_LOGOUT', 'Session terminated');
   navigate('home');
+  showModal('login');
 }
 
 function updateAuthUI() {
@@ -235,7 +217,7 @@ async function loadProducts() {
     addEventLogEntry('PRODUCTS_LOADED', products.length + ' items from Product Service');
   } else {
     products = [];
-    addEventLogEntry('PRODUCTS_LOADED', 'Product Service offline');
+    addEventLogEntry('PRODUCTS_LOADED', 'No products available');
   }
 
   state.products = products;
@@ -248,7 +230,7 @@ function renderProducts(products) {
   grid.innerHTML = '';
 
   if (products.length === 0) {
-    grid.innerHTML = '<div class="empty-state"><div class="empty-icon">?</div><p>No products found</p></div>';
+    grid.innerHTML = '<div class="empty-state"><div class="empty-icon">?</div><p>No products found. Add products via the API.</p></div>';
     return;
   }
 
@@ -421,33 +403,17 @@ async function placeOrder() {
     addEventLogEntry('ORDER_CREATED', 'Order ID: ' + (res.data.data?.id || 'confirmed'));
     addEventLogEntry('INVENTORY_RESERVED', 'Stock reserved via Inventory Service');
     addEventLogEntry('PAYMENT_PROCESSED', 'Payment completed via Payment Service');
-    addEventLogEntry('EVENT_PUBLISHED', 'order-created event sent to Kafka on AWS MSK');
+    addEventLogEntry('EVENT_PUBLISHED', 'order-created event sent to Kafka');
+
+    state.cart = [];
+    saveCart();
+    updateCartCount();
+    showModal('order-success');
   } else {
-    // Demo mode
-    const orderId = 'ORD-' + Date.now().toString(36).toUpperCase();
-    addEventLogEntry('ORDER_CREATED', 'Order ' + orderId + ' (demo mode)');
-    addEventLogEntry('INVENTORY_RESERVED', 'Stock reserved (demo)');
-    addEventLogEntry('PAYMENT_PROCESSED', 'Payment $' + totalAmount.toFixed(2) + ' processed (demo)');
-    addEventLogEntry('EVENT_PUBLISHED', 'Kafka event published (demo)');
-
-    // Store demo order
-    const demoOrders = JSON.parse(localStorage.getItem('cr_demo_orders') || '[]');
-    demoOrders.push({
-      id: orderId,
-      items: state.cart.map(c => ({ ...c })),
-      totalAmount,
-      shippingAddress: address,
-      status: 'confirmed',
-      createdAt: new Date().toISOString(),
-    });
-    localStorage.setItem('cr_demo_orders', JSON.stringify(demoOrders));
+    const errMsg = (res.data && res.data.error && res.data.error.message) || 'Order failed. Please try again.';
+    showToast(errMsg, 'error');
+    addEventLogEntry('ORDER_FAILED', errMsg);
   }
-
-  // Clear cart and show success
-  state.cart = [];
-  saveCart();
-  updateCartCount();
-  showModal('order-success');
 }
 
 async function loadOrders() {
@@ -460,7 +426,6 @@ async function loadOrders() {
   loginPrompt.classList.add('hidden');
   ordersContainer.innerHTML = '';
 
-  // Try API first
   const res = await apiFetch('/api/orders/orders');
 
   let orders = [];
@@ -468,10 +433,6 @@ async function loadOrders() {
     orders = Array.isArray(res.data.data) ? res.data.data : [];
     addEventLogEntry('ORDERS_LOADED', orders.length + ' orders from Order Service');
   }
-
-  // Merge demo orders
-  const demoOrders = JSON.parse(localStorage.getItem('cr_demo_orders') || '[]');
-  orders = [...orders, ...demoOrders];
 
   if (orders.length === 0) {
     emptyEl.classList.remove('hidden');
@@ -507,15 +468,25 @@ async function loadInventory() {
   const tbody = document.getElementById('inventory-tbody');
   tbody.innerHTML = '';
 
-  let inventory = DEMO_INVENTORY;
-
-  // Try to load from API for each known product
-  for (const item of inventory) {
-    const res = await apiFetch('/api/inventory/product/' + item.productId);
+  // Load inventory for each known product from the API
+  let inventory = [];
+  for (const product of state.products) {
+    const res = await apiFetch('/api/inventory/product/' + product.id);
     if (res.ok && res.data && res.data.data) {
-      item.quantity = res.data.data.quantity || item.quantity;
-      item.reservedQuantity = res.data.data.reservedQuantity || item.reservedQuantity;
+      inventory.push({
+        productId: product.id,
+        productName: product.name,
+        sku: product.sku || '',
+        quantity: res.data.data.quantity || 0,
+        reservedQuantity: res.data.data.reservedQuantity || 0,
+      });
     }
+  }
+
+  if (inventory.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:1rem">No inventory data available</td></tr>';
+    addEventLogEntry('INVENTORY_LOADED', 'No inventory data');
+    return;
   }
 
   inventory.forEach(item => {
@@ -573,7 +544,6 @@ async function checkServiceHealth() {
 
 function refreshAdminPanel() {
   checkServiceHealth();
-  // Simulate live metrics with small variations
   const throughput = 1200 + Math.floor(Math.random() * 100);
   const latency = 400 + Math.floor(Math.random() * 50);
   const errorRate = (0.2 + Math.random() * 0.2).toFixed(1);
@@ -598,7 +568,6 @@ function addEventLogEntry(type, message) {
 
   log.insertBefore(entry, log.firstChild);
 
-  // Trim old entries
   while (log.children.length > MAX_LOG_ENTRIES) {
     log.removeChild(log.lastChild);
   }
@@ -607,25 +576,24 @@ function addEventLogEntry(type, message) {
 function startEventLog() {
   addEventLogEntry('SYSTEM', 'CloudRetail Frontend initialized');
   addEventLogEntry('SYSTEM', 'Connecting to API Gateway at ' + API_BASE);
-  addEventLogEntry('AWS_EKS', 'Kubernetes cluster: cloudretail-cluster (eu-west-1)');
-  addEventLogEntry('AWS_RDS', '5x PostgreSQL databases online');
+  addEventLogEntry('AWS_EKS', 'Kubernetes cluster: cloudretail-cluster (ap-southeast-1)');
+  addEventLogEntry('AWS_RDS', 'PostgreSQL instance online (5 databases)');
   addEventLogEntry('AWS_MSK', 'Kafka broker connected');
   addEventLogEntry('AWS_ELASTICACHE', 'Redis cache connected');
 
-  // Simulated background events
   const events = [
-    ['KAFKA_EVENT', 'inventory-update: product p003 stock changed'],
-    ['KAFKA_EVENT', 'price-change: product p001 price updated'],
+    ['KAFKA_EVENT', 'inventory-update: stock changed'],
+    ['KAFKA_EVENT', 'price-change: product price updated'],
     ['HEALTH_CHECK', 'All 7 services responding (200 OK)'],
     ['AWS_CLOUDWATCH', 'Metrics published to AMP workspace'],
     ['CACHE_HIT', 'Redis: product catalog cache hit (87% rate)'],
-    ['AWS_ALB', 'Request routed to user-service replica-2'],
-    ['KAFKA_EVENT', 'order-status: ORD-x8k7 shipped'],
+    ['AWS_ALB', 'Request routed to user-service replica'],
+    ['KAFKA_EVENT', 'order-status: order shipped'],
     ['HPA_SCALING', 'product-service scaled to 4 replicas (CPU 72%)'],
     ['AWS_S3', 'Static assets served via CloudFront CDN'],
     ['CIRCUIT_BREAKER', 'payment-service circuit: CLOSED (healthy)'],
-    ['KAFKA_EVENT', 'user-registered: new customer in EU region'],
-    ['AWS_ROUTE53', 'DNS health check passed for eu-west-1'],
+    ['KAFKA_EVENT', 'user-registered: new customer'],
+    ['AWS_ROUTE53', 'DNS health check passed for ap-southeast-1'],
   ];
 
   let idx = 0;

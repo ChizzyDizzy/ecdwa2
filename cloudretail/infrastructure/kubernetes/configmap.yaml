@@ -79,6 +79,6 @@ data:
   METRICS_PORT: "9090"
 
   # Multi-region Configuration
-  REGION: "us-east-1"
-  AVAILABILITY_ZONE: "us-east-1a"
+  REGION: "ap-southeast-1"
+  AVAILABILITY_ZONE: "ap-southeast-1a"
   CLUSTER_NAME: "cloudretail-prod"

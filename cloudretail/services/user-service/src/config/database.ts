@@ -16,7 +16,9 @@ const sequelize = new Sequelize({
     acquire: 30000,
     idle: 10000,
   },
-  ssl: process.env.DB_SSL === 'true',
+  dialectOptions: process.env.DB_SSL === 'true' ? {
+    ssl: { require: true, rejectUnauthorized: false },
+  } : {},
 });
 
 // Initialize models

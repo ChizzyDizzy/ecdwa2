@@ -511,7 +511,7 @@ ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
 VALID_API_KEYS=your-api-key-1,your-api-key-2
 
 # GDPR (User Service)
-REGION=EU
+REGION=ap-southeast-1
 PRIVACY_POLICY_URL=https://cloudretail.com/privacy
 
 # Logging
