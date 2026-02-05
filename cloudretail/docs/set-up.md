@@ -1,393 +1,319 @@
-# CloudRetail Platform - Beginner Setup Guide
+# CloudRetail Platform - Setup Guide
 
 **COMP60010: Enterprise Cloud and Distributed Web Applications**
 
-This guide walks you through setting up the entire CloudRetail platform from scratch, including local development, AWS cloud deployment, and monitoring. No prior experience with these tools is assumed.
+This guide walks you through getting CloudRetail running locally, testing every service, and deploying to AWS. Follow the sections in order from top to bottom.
 
 ---
 
 ## Table of Contents
 
-1. [Prerequisites - What You Need to Install](#1-prerequisites---what-you-need-to-install)
-2. [Clone the Repository](#2-clone-the-repository)
-3. [Quick Start - Get the Frontend Running](#3-quick-start---get-the-frontend-running)
-4. [Understand the Project Structure](#4-understand-the-project-structure)
-5. [Local Development Setup (Docker Compose)](#5-local-development-setup-docker-compose)
-6. [Running Individual Services (Without Docker)](#6-running-individual-services-without-docker)
-7. [Running the Tests](#7-running-the-tests)
-8. [AWS Cloud Setup](#8-aws-cloud-setup)
-9. [Deploying to AWS EKS (Kubernetes)](#9-deploying-to-aws-eks-kubernetes)
-10. [Setting Up Monitoring on AWS](#10-setting-up-monitoring-on-aws)
-11. [Setting Up CI/CD on AWS](#11-setting-up-cicd-on-aws)
-12. [Verifying Everything Works](#12-verifying-everything-works)
-13. [Common Issues and Troubleshooting](#13-common-issues-and-troubleshooting)
-14. [Useful Commands Reference](#14-useful-commands-reference)
+1. [Prerequisites](#1-prerequisites)
+2. [Clone and Install](#2-clone-and-install)
+3. [Project Structure](#3-project-structure)
+4. [Start Everything with Docker Compose](#4-start-everything-with-docker-compose)
+5. [Wait for Services to Be Healthy](#5-wait-for-services-to-be-healthy)
+6. [Test the APIs](#6-test-the-apis)
+7. [Open the Frontend](#7-open-the-frontend)
+8. [Running the Tests](#8-running-the-tests)
+9. [Running Services Without Docker (Optional)](#9-running-services-without-docker-optional)
+10. [AWS Cloud Deployment](#10-aws-cloud-deployment)
+11. [AWS Monitoring and CI/CD](#11-aws-monitoring-and-cicd)
+12. [Troubleshooting](#12-troubleshooting)
+13. [Commands Reference](#13-commands-reference)
 
 ---
 
-## 1. Prerequisites - What You Need to Install
+## 1. Prerequisites
 
-Before starting, install the following tools on your machine.
+Install these before starting:
 
-### 1.1 Node.js and npm
+| Tool | Version | Install From |
+|------|---------|-------------|
+| **Node.js** | 18+ | https://nodejs.org |
+| **npm** | 9+ | Comes with Node.js |
+| **Docker Desktop** | 20+ | https://www.docker.com/products/docker-desktop |
+| **Docker Compose** | 2+ | Comes with Docker Desktop |
+| **Git** | 2+ | https://git-scm.com/downloads |
 
-Node.js is the JavaScript runtime that all our microservices run on.
-
-```bash
-# Download and install Node.js 18+ from https://nodejs.org
-# Verify installation:
-node --version    # Should show v18.x.x or higher
-npm --version     # Should show 9.x.x or higher
-```
-
-### 1.2 Docker and Docker Compose
-
-Docker packages each service into a container. Docker Compose runs all containers together.
+Verify everything is installed:
 
 ```bash
-# Install Docker Desktop from https://www.docker.com/products/docker-desktop
-# Verify installation:
-docker --version           # Should show 20.x or higher
-docker-compose --version   # Should show 2.x or higher
+node --version          # v18.x.x or higher
+npm --version           # 9.x.x or higher
+docker --version        # 20.x or higher
+docker compose version  # 2.x or higher
+git --version           # 2.x or higher
 ```
 
-### 1.3 Git
-
-Git is used for version control.
-
-```bash
-# Install from https://git-scm.com/downloads
-git --version   # Should show 2.x or higher
-```
-
-### 1.4 AWS CLI (for cloud deployment)
-
-The AWS CLI lets you interact with Amazon Web Services from your terminal.
-
-```bash
-# Install from https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html
-aws --version   # Should show aws-cli/2.x.x
-
-# Configure your AWS credentials:
-aws configure
-# Enter your:
-#   AWS Access Key ID: (from your AWS account)
-#   AWS Secret Access Key: (from your AWS account)
-#   Default region name: eu-west-1 (or your preferred region)
-#   Default output format: json
-```
-
-### 1.5 kubectl (for Kubernetes deployment)
-
-kubectl is the command-line tool for controlling Kubernetes clusters.
-
-```bash
-# Install from https://kubernetes.io/docs/tasks/tools/
-kubectl version --client   # Should show v1.28 or higher
-```
-
-### 1.6 eksctl (for creating AWS EKS clusters)
-
-eksctl simplifies creating and managing Kubernetes clusters on AWS.
-
-```bash
-# Install from https://eksctl.io/installation/
-eksctl version   # Should show 0.x.x
-```
+**For AWS deployment only** (Section 10), you will also need:
+- AWS CLI v2 — https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html
+- kubectl v1.28+ — https://kubernetes.io/docs/tasks/tools/
+- eksctl — https://eksctl.io/installation/
 
 ---
 
-## 2. Clone the Repository
+## 2. Clone and Install
 
 ```bash
-# Clone the project
 git clone https://github.com/ChizzyDizzy/ecdwa2.git
 cd ecdwa2/cloudretail
 
-# Install all dependencies (this installs packages for all services at once)
+# Install all dependencies (root + all microservices + shared libraries)
 npm run install:all
 ```
 
-This uses npm workspaces to install dependencies for:
-- 5 microservices (`services/user-service`, `services/product-service`, etc.)
-- API Gateway (`api-gateway`)
-- Event Bus (`event-bus`)
-- Shared libraries (`shared/models`, `shared/middleware`)
+This installs packages for all 5 microservices, the API gateway, event bus, and shared libraries using npm workspaces.
 
 ---
 
-## 3. Quick Start - Get the Frontend Running
-
-The fastest way to see the CloudRetail frontend is using **Docker Compose**, which starts the pixelated retro UI along with all backend microservices, databases, and infrastructure in one command.
-
-### Option A: Full Stack with Docker Compose (Recommended)
-
-This starts the frontend, all 7 backend services, 5 PostgreSQL databases, Redis, and Kafka:
-
-```bash
-cd cloudretail
-
-# 1. Install all dependencies
-npm run install:all
-
-# 2. Build all Docker images (frontend + backend services)
-npm run docker:build
-
-# 3. Start everything
-npm run docker:up
-
-# 4. Open the frontend in your browser
-#    http://localhost:3000
-```
-
-The frontend is a static HTML/CSS/JS application served by an **NGINX Alpine** container. It connects to the API Gateway at `http://localhost:8080` which routes requests to the backend microservices. The UI features a pixelated retro theme with product browsing, user authentication, cart management, and order placement.
-
-> **Troubleshooting:** If the Docker build fails with a cache error, run `docker builder prune -f` and then `npm run docker:build` again.
-
-### Option B: Frontend Only (Static Files)
-
-If you just want to preview the frontend without backend services, you can open the HTML file directly:
-
-```bash
-# Simply open the file in your browser:
-# cloudretail/frontend/public/index.html
-
-# Or serve it with any static file server:
-npx serve cloudretail/frontend/public -p 3000
-```
-
-> **Note:** Without the backend services running, API calls (login, products, orders) will fail. This is only useful for inspecting the UI layout and design.
-
-### Option C: Frontend with Docker Only
-
-If you want to run just the frontend container:
-
-```bash
-cd cloudretail
-
-# Build only the frontend image
-docker build -t cloudretail-frontend -f frontend/Dockerfile frontend/
-
-# Run the frontend container on port 3000
-docker run -p 3000:80 cloudretail-frontend
-```
-
-Then open **http://localhost:3000** in your browser. The frontend NGINX container serves the static files (HTML, CSS, JavaScript) and proxies API requests to the gateway. For the API calls to work, you still need the backend services running (use `npm run docker:up` for the full stack).
-
-### Frontend Files
-
-```
-frontend/
-├── public/
-│   ├── index.html    → Main HTML page with pixelated retro UI
-│   ├── styles.css    → CSS styles (pixel fonts, retro color scheme)
-│   └── app.js        → JavaScript (API calls, cart logic, auth)
-├── Dockerfile        → NGINX Alpine container config
-└── nginx.conf        → NGINX server configuration (port 80, API proxy)
-```
-
-### AWS Deployment
-
-In production, the frontend is deployed as a container on **AWS EKS** alongside the backend services, and served via an **AWS Application Load Balancer (ALB)**. The NGINX config proxies `/api/*` requests to the API Gateway service within the Kubernetes cluster. See [Section 9: Deploying to AWS EKS](#9-deploying-to-aws-eks-kubernetes) for full deployment instructions.
-
----
-
-## 4. Understand the Project Structure
+## 3. Project Structure
 
 ```
 cloudretail/
-├── frontend/              → Pixelated retro UI (NGINX on port 3000)
-│   ├── public/            → HTML, CSS, JS static files
-│   ├── Dockerfile         → NGINX Alpine container
-│   └── nginx.conf         → NGINX server config
-├── api-gateway/           → Single entry point for all API requests (port 8080)
+├── frontend/              → Static HTML/CSS/JS served by Nginx (port 3000)
+├── api-gateway/           → Routes all API requests to services (port 8080)
 ├── services/
-│   ├── user-service/      → User registration, login, JWT auth (port 3001)
-│   ├── product-service/   → Product catalog management (port 3002)
+│   ├── user-service/      → Registration, login, JWT auth (port 3001)
+│   ├── product-service/   → Product catalog CRUD (port 3002)
 │   ├── order-service/     → Order creation and tracking (port 3003)
-│   ├── inventory-service/ → Stock level management (port 3004)
+│   ├── inventory-service/ → Stock management (port 3004)
 │   └── payment-service/   → Payment processing (port 3005)
 ├── event-bus/             → Kafka-based event routing (port 4000)
-├── shared/                → Shared code (auth middleware, models, etc.)
+├── shared/                → Shared middleware and data models
 ├── infrastructure/
-│   └── kubernetes/        → All Kubernetes deployment files for AWS EKS
-├── monitoring/            → Prometheus, Grafana, alerting configs
+│   └── kubernetes/        → K8s manifests for AWS EKS deployment
+├── monitoring/            → Prometheus + Grafana configs
 ├── tests/                 → Unit, integration, and performance tests
-├── docs/                  → Documentation and reports
-├── docker-compose.yml     → Runs everything locally with one command
-└── package.json           → Root project config with all scripts
+├── docker-compose.yml     → Runs everything locally
+└── package.json           → Root scripts (install:all, docker:build, etc.)
 ```
 
-**Key concept:** Each microservice has its own database (PostgreSQL), its own Docker container, and communicates with other services via Kafka events or HTTP calls. In production, all of this runs on **AWS EKS** (Amazon's managed Kubernetes service).
+**Architecture:** Each microservice has its own PostgreSQL database. Services communicate through the event bus (Kafka + Redis). The API gateway is the single entry point for all client requests.
+
+**Docker Compose starts 15 containers:**
+- 5 microservices + API gateway + event bus + frontend (8 app containers)
+- 5 PostgreSQL databases (one per service)
+- Redis (event caching)
+- Kafka + Zookeeper (event streaming)
 
 ---
 
-## 5. Local Development Setup (Docker Compose)
-
-This is the fastest way to get everything running. Docker Compose starts all 15 containers (8 services including the frontend + 5 PostgreSQL databases + Redis + Kafka/Zookeeper).
-
-### Step 1: Build all Docker images
+## 4. Start Everything with Docker Compose
 
 ```bash
+cd ecdwa2/cloudretail
+
+# Step 1: Build all Docker images
 npm run docker:build
-# This builds Docker images for all 7 services using multi-stage builds
-```
 
-### Step 2: Start all services
-
-```bash
+# Step 2: Start all 15 containers
 npm run docker:up
-# This starts all containers in the background
 ```
 
-### Step 3: Check that everything is running
+If the build fails with a cache error, run this and rebuild:
 
 ```bash
-docker-compose ps
-# You should see all services listed as "Up" or "healthy"
+docker builder prune -f
+npm run docker:build
 ```
 
-### Step 4: Test the API
+---
+
+## 5. Wait for Services to Be Healthy
+
+**This step is important.** The databases take 10-20 seconds to start. The services won't work until their database is ready.
 
 ```bash
-# Health check on the API Gateway:
+# Check container status — wait until all show "Up" or "healthy"
+docker compose ps
+```
+
+Check the API gateway health endpoint:
+
+```bash
 curl http://localhost:8080/health
+```
 
-# Register a new user:
+**Healthy response** — all services connected to their databases:
+```json
+{"status":"healthy","timestamp":"...","uptime":...,"details":{"services":true}}
+```
+
+**Unhealthy response** — services still starting or a database is down:
+```json
+{"status":"unhealthy","timestamp":"...","uptime":...,"details":{"services":false}}
+```
+
+If you get `unhealthy`, wait 30 seconds and try again. The API gateway checks each service every 30 seconds. You can check individual service logs:
+
+```bash
+# See which service is failing
+docker compose logs user-service
+docker compose logs product-service
+docker compose logs api-gateway
+```
+
+---
+
+## 6. Test the APIs
+
+Once the health check returns `healthy`, test the full flow.
+
+### 6.1 Register a User
+
+**Important:** The `gdprConsent` field is required and must be `true`.
+
+```bash
 curl -X POST http://localhost:8080/api/users/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "test@example.com",
     "password": "Password123!",
     "firstName": "Test",
-    "lastName": "User"
+    "lastName": "User",
+    "gdprConsent": true
   }'
+```
 
-# Login:
+Expected response:
+```json
+{
+  "success": true,
+  "data": {
+    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "user": {
+      "id": "...",
+      "email": "test@example.com",
+      "firstName": "Test",
+      "lastName": "User",
+      "role": "customer"
+    }
+  }
+}
+```
+
+Save the `token` value — you need it for authenticated requests.
+
+### 6.2 Login
+
+```bash
 curl -X POST http://localhost:8080/api/users/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "test@example.com",
     "password": "Password123!"
   }'
-# Save the JWT token from the response to use in other requests
+```
 
-# List products (replace <TOKEN> with your JWT):
+Returns the same format with a JWT token.
+
+### 6.3 Create a Product (use your token)
+
+```bash
+curl -X POST http://localhost:8080/api/products \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -d '{
+    "name": "Test Product",
+    "description": "A test product",
+    "price": 29.99,
+    "category": "electronics",
+    "sku": "TEST-001"
+  }'
+```
+
+### 6.4 List Products
+
+```bash
 curl http://localhost:8080/api/products \
-  -H "Authorization: Bearer <TOKEN>"
+  -H "Authorization: Bearer <YOUR_TOKEN>"
 ```
 
-### Step 5: View logs
+### 6.5 Create Inventory for the Product
 
 ```bash
-# View all service logs:
-docker-compose logs -f
-
-# View logs for a specific service:
-docker-compose logs -f user-service
-docker-compose logs -f api-gateway
+curl -X POST http://localhost:8080/api/inventory \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -d '{
+    "productId": "<PRODUCT_ID_FROM_STEP_6.3>",
+    "quantity": 100,
+    "warehouse": "main",
+    "reorderPoint": 10,
+    "reorderQuantity": 50
+  }'
 ```
 
-### Step 6: Stop everything
+### 6.6 Place an Order
 
 ```bash
-# Stop all services (keeps data):
-npm run docker:down
-
-# Stop and delete all data (clean start):
-docker-compose down -v
+curl -X POST http://localhost:8080/api/orders \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -d '{
+    "items": [
+      {
+        "productId": "<PRODUCT_ID>",
+        "quantity": 2,
+        "price": 29.99
+      }
+    ],
+    "shippingAddress": {
+      "street": "123 Test St",
+      "city": "Manchester",
+      "postcode": "M1 1AA",
+      "country": "UK"
+    }
+  }'
 ```
 
-### Service URLs (Local)
+### 6.7 Check Event Bus Stats
 
-| Service | URL | Purpose |
-|---|---|---|
-| **Frontend** | **http://localhost:3000** | **Main UI - open this in your browser** |
-| API Gateway | http://localhost:8080 | Backend API entry point |
-| User Service | http://localhost:3001 | Direct access (bypasses gateway) |
-| Product Service | http://localhost:3002 | Direct access |
-| Order Service | http://localhost:3003 | Direct access |
-| Inventory Service | http://localhost:3004 | Direct access |
-| Payment Service | http://localhost:3005 | Direct access |
-| Event Bus | http://localhost:4000 | Event routing service |
+```bash
+curl http://localhost:4000/events/stats
+```
 
-**To use the application:** Open http://localhost:3000 in your browser. The pixelated retro UI will connect to the API Gateway at port 8080 to fetch products, handle authentication, and place orders through the distributed microservices.
+This shows how many events have been published across the system (user.created, product.created, order.created, etc.).
 
 ---
 
-## 6. Running Individual Services (Without Docker)
+## 7. Open the Frontend
 
-If you want to run services directly on your machine for faster development:
+Open **http://localhost:3000** in your browser.
 
-### Step 1: Start infrastructure only
+The frontend is a static HTML/CSS/JS application served by Nginx. It connects to the API gateway at `http://localhost:8080`. You can:
 
-```bash
-# Start only the databases, Redis, and Kafka:
-docker-compose up -d postgres-users postgres-products postgres-orders \
-  postgres-inventory postgres-payments redis zookeeper kafka
-```
+- Browse the product catalog
+- Register and login (JWT stored in localStorage)
+- Add products to cart and place orders
+- View order history
+- Check inventory status
+- View the admin dashboard with architecture diagrams
 
-### Step 2: Run services individually
+**Frontend files:**
 
-Open separate terminal windows for each service:
-
-```bash
-# Terminal 1 - Event Bus
-npm run dev:eventbus
-
-# Terminal 2 - User Service
-npm run dev:user
-
-# Terminal 3 - Product Service
-npm run dev:product
-
-# Terminal 4 - Order Service
-npm run dev:order
-
-# Terminal 5 - Inventory Service
-npm run dev:inventory
-
-# Terminal 6 - Payment Service
-npm run dev:payment
-
-# Terminal 7 - API Gateway
-npm run dev:gateway
-```
-
-### Step 3: Configure environment variables (optional)
-
-Each service has a `.env.example` file. To customize settings:
-
-```bash
-cd services/user-service
-cp .env.example .env
-# Edit .env with your settings (database host, JWT secret, etc.)
-```
-
-Key environment variables:
-
-```env
-PORT=3001                    # Service port
-DB_HOST=localhost            # Database host
-DB_PORT=5432                 # Database port
-DB_NAME=cloudretail_users    # Database name
-DB_USER=postgres             # Database user
-DB_PASSWORD=postgres         # Database password
-JWT_SECRET=your-secret-key   # JWT signing key (User Service only)
-EVENT_BUS_URL=http://localhost:4000/events  # Event bus endpoint
-```
+| File | Purpose |
+|------|---------|
+| `frontend/public/index.html` | Main HTML page |
+| `frontend/public/styles.css` | CSS theme (Y2K retro Windows style) |
+| `frontend/public/app.js` | JavaScript (API calls, auth, cart logic) |
+| `frontend/Dockerfile` | Nginx Alpine container |
+| `frontend/nginx.conf` | Nginx server config (port 3000) |
 
 ---
 
-## 7. Running the Tests
+## 8. Running the Tests
 
-### Unit Tests (605 tests, 85% coverage)
+### Unit Tests
 
 ```bash
-# Run all unit tests:
 npm run test:unit
+```
 
-# Run tests for a specific service:
+### Run Tests for a Specific Service
+
+```bash
 cd services/user-service && npm test
 cd services/product-service && npm test
 cd services/order-service && npm test
@@ -395,28 +321,21 @@ cd services/inventory-service && npm test
 cd services/payment-service && npm test
 ```
 
-### Integration Tests (51 tests)
+### Integration Tests
+
+Make sure Docker Compose is running first:
 
 ```bash
-# Make sure all services are running first:
-npm run docker:up
-
-# Then run integration tests:
 npm run test:integration
 ```
 
-### Performance Tests
+### Performance / Load Tests
 
 ```bash
-# Load test with Artillery:
 npm run test:performance
-
-# Stress test with k6 (install k6 first from https://k6.io):
-cd tests/performance
-k6 run k6-load-test.js
 ```
 
-### Run Everything
+### All Tests
 
 ```bash
 npm test
@@ -424,32 +343,79 @@ npm test
 
 ---
 
-## 8. AWS Cloud Setup
+## 9. Running Services Without Docker (Optional)
 
-This section covers setting up the AWS infrastructure needed to run CloudRetail in the cloud.
+If you want to run services directly for faster development (hot-reload with nodemon):
 
-### 7.1 Create an AWS Account
-
-1. Go to https://aws.amazon.com and click "Create an AWS Account"
-2. Follow the registration process
-3. Enable MFA (Multi-Factor Authentication) on the root account for security
-
-### 7.2 Set Up IAM User
-
-Do not use your root account for day-to-day work. Create an IAM user:
-
-1. Go to **AWS IAM** Console → Users → Add users
-2. Username: `cloudretail-admin`
-3. Attach policies: `AdministratorAccess` (for setup; restrict later)
-4. Create access keys for CLI access
-5. Run `aws configure` with these keys
-
-### 7.3 Create the AWS EKS Cluster
-
-**AWS EKS** (Elastic Kubernetes Service) is Amazon's managed Kubernetes service. It runs and manages the Kubernetes control plane for you.
+### Step 1: Start only the infrastructure containers
 
 ```bash
-# Create a Kubernetes cluster on AWS EKS:
+docker compose up -d postgres-users postgres-products postgres-orders \
+  postgres-inventory postgres-payments redis zookeeper kafka
+```
+
+### Step 2: Start the event bus
+
+```bash
+npm run dev:eventbus
+```
+
+### Step 3: Start services (each in a separate terminal)
+
+```bash
+npm run dev:user        # Terminal 1 — port 3001
+npm run dev:product     # Terminal 2 — port 3002
+npm run dev:order       # Terminal 3 — port 3003
+npm run dev:inventory   # Terminal 4 — port 3004
+npm run dev:payment     # Terminal 5 — port 3005
+npm run dev:gateway     # Terminal 6 — port 8080
+```
+
+Each service has a `.env.example` file you can copy to `.env` and customize:
+
+```bash
+cd services/user-service
+cp .env.example .env
+```
+
+---
+
+## 10. AWS Cloud Deployment
+
+This section covers deploying CloudRetail to AWS. These AWS services replace the local Docker infrastructure.
+
+| Local (Docker Compose) | AWS Service | Purpose |
+|------------------------|-------------|---------|
+| Docker containers | **AWS EKS** (Elastic Kubernetes Service) | Runs containers in a managed K8s cluster |
+| Docker images | **AWS ECR** (Elastic Container Registry) | Stores Docker images |
+| PostgreSQL containers | **AWS RDS** (Relational Database Service) | Managed PostgreSQL databases |
+| Redis container | **AWS ElastiCache** | Managed Redis cache |
+| Kafka + Zookeeper | **AWS MSK** (Managed Streaming for Kafka) | Managed Kafka cluster |
+| localhost access | **AWS ALB** (Application Load Balancer) | Routes internet traffic to services |
+| — | **AWS Route 53** | DNS management |
+| — | **AWS Secrets Manager** | Stores passwords and API keys securely |
+
+### 10.1 Set Up AWS Account and CLI
+
+1. Create an AWS account at https://aws.amazon.com
+2. Enable MFA on the root account
+3. Create an IAM user with `AdministratorAccess`:
+   - Go to IAM Console → Users → Add users
+   - Username: `cloudretail-admin`
+   - Create access keys for CLI access
+4. Configure the CLI:
+
+```bash
+aws configure
+# AWS Access Key ID: <your-key>
+# AWS Secret Access Key: <your-secret>
+# Default region: eu-west-1
+# Default output format: json
+```
+
+### 10.2 Create the EKS Cluster
+
+```bash
 eksctl create cluster \
   --name cloudretail-cluster \
   --region eu-west-1 \
@@ -460,61 +426,42 @@ eksctl create cluster \
   --nodes-max 5 \
   --managed
 
-# This creates:
-# - An EKS control plane
-# - A managed node group with 3 EC2 instances (t3.medium)
-# - VPC, subnets, security groups
-# - IAM roles for the cluster
-
-# Verify the cluster is running:
+# Verify:
 kubectl get nodes
-# You should see 3 nodes in "Ready" state
+# Should show 3 nodes in "Ready" state
 ```
 
-### 7.4 Create AWS ECR Repositories
-
-**AWS ECR** (Elastic Container Registry) stores your Docker images.
+### 10.3 Create ECR Repositories
 
 ```bash
-# Create a repository for each service:
-aws ecr create-repository --repository-name cloudretail/user-service --region eu-west-1
-aws ecr create-repository --repository-name cloudretail/product-service --region eu-west-1
-aws ecr create-repository --repository-name cloudretail/order-service --region eu-west-1
-aws ecr create-repository --repository-name cloudretail/inventory-service --region eu-west-1
-aws ecr create-repository --repository-name cloudretail/payment-service --region eu-west-1
-aws ecr create-repository --repository-name cloudretail/event-bus --region eu-west-1
-aws ecr create-repository --repository-name cloudretail/api-gateway --region eu-west-1
-aws ecr create-repository --repository-name cloudretail/frontend --region eu-west-1
+for service in user-service product-service order-service inventory-service \
+  payment-service event-bus api-gateway frontend; do
+  aws ecr create-repository \
+    --repository-name cloudretail/$service \
+    --region eu-west-1
+done
 ```
 
-### 7.5 Create AWS RDS Databases
+### 10.4 Create RDS Databases
 
-**AWS RDS** (Relational Database Service) provides managed PostgreSQL databases.
+Create one PostgreSQL instance per microservice:
 
 ```bash
-# Create a database for each service (repeat for each):
-aws rds create-db-instance \
-  --db-instance-identifier cloudretail-users-db \
-  --db-instance-class db.t3.micro \
-  --engine postgres \
-  --engine-version 15 \
-  --master-username postgres \
-  --master-user-password YourSecurePassword123! \
-  --allocated-storage 20 \
-  --db-name cloudretail_users \
-  --vpc-security-group-ids sg-xxxxxxxx \
-  --region eu-west-1
-
-# Repeat for:
-# cloudretail-products-db  (db-name: cloudretail_products)
-# cloudretail-orders-db    (db-name: cloudretail_orders)
-# cloudretail-inventory-db (db-name: cloudretail_inventory)
-# cloudretail-payments-db  (db-name: cloudretail_payments)
+for db in users products orders inventory payments; do
+  aws rds create-db-instance \
+    --db-instance-identifier cloudretail-${db}-db \
+    --db-instance-class db.t3.micro \
+    --engine postgres \
+    --engine-version 15 \
+    --master-username postgres \
+    --master-user-password YourSecurePassword123! \
+    --allocated-storage 20 \
+    --db-name cloudretail_${db} \
+    --region eu-west-1
+done
 ```
 
-### 7.6 Create AWS ElastiCache (Redis)
-
-**AWS ElastiCache** provides a managed Redis instance for caching.
+### 10.5 Create ElastiCache (Redis)
 
 ```bash
 aws elasticache create-cache-cluster \
@@ -525,106 +472,99 @@ aws elasticache create-cache-cluster \
   --region eu-west-1
 ```
 
-### 7.7 Create AWS MSK (Managed Kafka)
+### 10.6 Create MSK (Managed Kafka)
 
-**AWS MSK** (Managed Streaming for Apache Kafka) provides a managed Kafka cluster.
+1. Go to Amazon MSK Console → Create cluster
+2. Cluster name: `cloudretail-kafka`
+3. Broker type: `kafka.t3.small`
+4. Number of brokers: 3 (one per availability zone)
+5. Apache Kafka version: 3.5.1
+6. Select the same VPC as your EKS cluster
 
-```bash
-# Create an MSK cluster via the AWS Console:
-# 1. Go to Amazon MSK → Create cluster
-# 2. Cluster name: cloudretail-kafka
-# 3. Broker type: kafka.t3.small
-# 4. Number of brokers: 3 (one per AZ)
-# 5. Apache Kafka version: 3.5.1
-# 6. Select the same VPC as your EKS cluster
-# 7. Click "Create cluster"
-```
-
-### 7.8 Store Secrets in AWS Secrets Manager
+### 10.7 Store Secrets
 
 ```bash
-# Store database passwords:
 aws secretsmanager create-secret \
   --name cloudretail/db-password \
   --secret-string "YourSecurePassword123!" \
   --region eu-west-1
 
-# Store JWT secret:
 aws secretsmanager create-secret \
   --name cloudretail/jwt-secret \
-  --secret-string "your-production-jwt-secret-key" \
+  --secret-string "$(openssl rand -base64 64)" \
   --region eu-west-1
 ```
 
----
-
-## 9. Deploying to AWS EKS (Kubernetes)
-
-### Step 1: Push Docker images to AWS ECR
+### 10.8 Push Docker Images to ECR
 
 ```bash
-# Log in to ECR:
+# Login to ECR
 aws ecr get-login-password --region eu-west-1 | \
-  docker login --username AWS --password-stdin <AWS_ACCOUNT_ID>.dkr.ecr.eu-west-1.amazonaws.com
+  docker login --username AWS --password-stdin \
+  <AWS_ACCOUNT_ID>.dkr.ecr.eu-west-1.amazonaws.com
 
-# Build and tag images:
-docker build -t cloudretail/user-service -f services/user-service/Dockerfile .
-docker tag cloudretail/user-service:latest <AWS_ACCOUNT_ID>.dkr.ecr.eu-west-1.amazonaws.com/cloudretail/user-service:latest
+# Build, tag, and push each service
+for service in user-service product-service order-service inventory-service \
+  payment-service event-bus api-gateway; do
+  docker build -t cloudretail/$service -f services/$service/Dockerfile .
+  docker tag cloudretail/$service:latest \
+    <AWS_ACCOUNT_ID>.dkr.ecr.eu-west-1.amazonaws.com/cloudretail/$service:latest
+  docker push \
+    <AWS_ACCOUNT_ID>.dkr.ecr.eu-west-1.amazonaws.com/cloudretail/$service:latest
+done
 
-# Push to ECR:
-docker push <AWS_ACCOUNT_ID>.dkr.ecr.eu-west-1.amazonaws.com/cloudretail/user-service:latest
-
-# Repeat for all 8 services:
-# cloudretail/product-service
-# cloudretail/order-service
-# cloudretail/inventory-service
-# cloudretail/payment-service
-# cloudretail/event-bus
-# cloudretail/api-gateway
-# cloudretail/frontend
+# Frontend (different Dockerfile path)
+docker build -t cloudretail/frontend -f frontend/Dockerfile frontend/
+docker tag cloudretail/frontend:latest \
+  <AWS_ACCOUNT_ID>.dkr.ecr.eu-west-1.amazonaws.com/cloudretail/frontend:latest
+docker push \
+  <AWS_ACCOUNT_ID>.dkr.ecr.eu-west-1.amazonaws.com/cloudretail/frontend:latest
 ```
 
-### Step 2: Update Kubernetes manifests with AWS resource endpoints
+### 10.9 Update Kubernetes Manifests
 
 Edit `infrastructure/kubernetes/configmap.yaml` to point to your AWS resources:
 
 ```yaml
-# Replace localhost references with AWS endpoints:
 data:
+  # Service URLs stay the same (K8s internal DNS)
   USER_SERVICE_URL: "http://user-service:3001"
   PRODUCT_SERVICE_URL: "http://product-service:3002"
   ORDER_SERVICE_URL: "http://order-service:3003"
   INVENTORY_SERVICE_URL: "http://inventory-service:3004"
   PAYMENT_SERVICE_URL: "http://payment-service:3005"
-  # Database hosts should point to your AWS RDS endpoints:
+  # Replace with your AWS RDS endpoints
   DB_HOST_USERS: "cloudretail-users-db.xxxxxxxx.eu-west-1.rds.amazonaws.com"
   DB_HOST_PRODUCTS: "cloudretail-products-db.xxxxxxxx.eu-west-1.rds.amazonaws.com"
-  # Redis should point to AWS ElastiCache:
+  DB_HOST_ORDERS: "cloudretail-orders-db.xxxxxxxx.eu-west-1.rds.amazonaws.com"
+  DB_HOST_INVENTORY: "cloudretail-inventory-db.xxxxxxxx.eu-west-1.rds.amazonaws.com"
+  DB_HOST_PAYMENTS: "cloudretail-payments-db.xxxxxxxx.eu-west-1.rds.amazonaws.com"
+  # Replace with your AWS ElastiCache endpoint
   REDIS_URL: "redis://cloudretail-redis.xxxxxxxx.cache.amazonaws.com:6379"
-  # Kafka should point to AWS MSK:
+  # Replace with your AWS MSK broker endpoint
   KAFKA_BROKERS: "b-1.cloudretail-kafka.xxxxxxxx.kafka.eu-west-1.amazonaws.com:9092"
 ```
 
-Edit `infrastructure/kubernetes/secrets.yaml` with base64-encoded credentials:
+Edit `infrastructure/kubernetes/secrets.yaml`:
 
 ```bash
-# Encode your secrets:
+# Base64-encode your secrets
 echo -n "YourSecurePassword123!" | base64
 # Use the output in secrets.yaml
 ```
 
-### Step 3: Deploy to AWS EKS
+### 10.10 Deploy to EKS
 
 ```bash
-# Make sure kubectl is pointing to your EKS cluster:
+# Point kubectl at your EKS cluster
 aws eks update-kubeconfig --name cloudretail-cluster --region eu-west-1
 
-# Run the deployment script:
+# Deploy everything
 cd infrastructure/kubernetes
 chmod +x deploy.sh
 ./deploy.sh
 
-# Or deploy manually step by step:
+# Or deploy step by step:
 kubectl apply -f namespace.yaml
 kubectl apply -f resource-quota.yaml
 kubectl apply -f configmap.yaml
@@ -645,32 +585,10 @@ kubectl apply -f network-policy.yaml
 kubectl apply -f ingress.yaml
 ```
 
-### Step 4: Verify the deployment
+### 10.11 Set Up the Load Balancer
 
 ```bash
-# Check all pods are running:
-kubectl get pods -n cloudretail
-# All pods should show "Running" and "1/1 READY"
-
-# Check services:
-kubectl get services -n cloudretail
-
-# Check the ingress (external URL):
-kubectl get ingress -n cloudretail
-
-# View logs for a specific service:
-kubectl logs -f deployment/user-service -n cloudretail
-
-# Check auto-scaling status:
-kubectl get hpa -n cloudretail
-```
-
-### Step 5: Set up AWS ALB Ingress Controller
-
-The **AWS Application Load Balancer** routes external traffic to your services:
-
-```bash
-# Install the AWS Load Balancer Controller:
+# Install the AWS ALB Ingress Controller
 helm repo add eks https://aws.github.io/eks-charts
 helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   -n kube-system \
@@ -678,94 +596,74 @@ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   --set serviceAccount.create=true
 ```
 
-### Step 6: Set up DNS with AWS Route 53
+### 10.12 Verify the Deployment
 
 ```bash
-# Create a hosted zone:
-aws route53 create-hosted-zone \
-  --name cloudretail.example.com \
-  --caller-reference $(date +%s)
+# All pods running
+kubectl get pods -n cloudretail
 
-# Point your domain to the ALB endpoint
-# (get the ALB DNS name from `kubectl get ingress -n cloudretail`)
+# Services have endpoints
+kubectl get services -n cloudretail
+
+# Ingress has an external address
+kubectl get ingress -n cloudretail
+
+# Auto-scaling is active
+kubectl get hpa -n cloudretail
+
+# Test the external endpoint
+curl https://<YOUR_ALB_DNS>/health
 ```
 
 ---
 
-## 10. Setting Up Monitoring on AWS
+## 11. AWS Monitoring and CI/CD
 
-### 9.1 AWS Managed Prometheus (Metrics)
-
-```bash
-# Create an AMP workspace:
-aws amp create-workspace --alias cloudretail-metrics --region eu-west-1
-
-# The Prometheus configuration is in:
-# monitoring/prometheus.yml
-# It automatically scrapes metrics from all services
-```
-
-### 9.2 AWS Managed Grafana (Dashboards)
-
-1. Go to **AWS Managed Grafana** Console → Create workspace
-2. Workspace name: `cloudretail-dashboards`
-3. Data source: Select your AMP workspace
-4. Import the pre-built dashboard from `monitoring/grafana-dashboard.json`
-
-The dashboard includes panels for:
-- Request rate per service
-- Response time (p50, p95, p99)
-- Error rates
-- CPU and memory usage
-- Database connections
-- Kafka event throughput
-- Business KPIs (orders, payments)
-
-### 9.3 AWS CloudWatch (Logs and Alarms)
+### 11.1 CloudWatch Logs
 
 ```bash
-# CloudWatch automatically collects logs from EKS pods
+# EKS automatically sends container logs to CloudWatch
 # Create a log group:
 aws logs create-log-group --log-group-name /cloudretail/services --region eu-west-1
-
-# Set up alarms based on alerting-rules.yml:
-# monitoring/alerting-rules.yml contains rules for:
-# - ServiceDown (service unavailable > 5 minutes)
-# - HighErrorRate (error rate > 5%)
-# - HighResponseTime (p95 > 2 seconds)
-# - DatabaseDown
-# - DiskSpaceLow
 ```
 
-### 9.4 AWS SNS (Alert Notifications)
+### 11.2 Prometheus + Grafana
 
 ```bash
-# Create an SNS topic for alerts:
+# Create an AWS Managed Prometheus workspace
+aws amp create-workspace --alias cloudretail-metrics --region eu-west-1
+```
+
+The Prometheus config is in `monitoring/prometheus.yml`. It scrapes metrics from all services.
+
+For Grafana:
+1. Go to AWS Managed Grafana Console → Create workspace
+2. Name: `cloudretail-dashboards`
+3. Data source: Select your AMP workspace
+4. Import dashboard from `monitoring/grafana-dashboard.json`
+
+### 11.3 Alert Notifications
+
+```bash
+# Create an SNS topic for alerts
 aws sns create-topic --name cloudretail-alerts --region eu-west-1
 
-# Subscribe your email:
+# Subscribe your email
 aws sns subscribe \
   --topic-arn arn:aws:sns:eu-west-1:<ACCOUNT_ID>:cloudretail-alerts \
   --protocol email \
   --notification-endpoint your-email@example.com
 ```
 
----
+Alert rules are defined in `monitoring/alerting-rules.yml` (ServiceDown, HighErrorRate, HighResponseTime, etc.).
 
-## 11. Setting Up CI/CD on AWS
-
-### Using AWS CodePipeline
+### 11.4 CI/CD with AWS CodePipeline
 
 1. **Source Stage:** Connect to your GitHub repository
-2. **Build Stage (AWS CodeBuild):**
-   - Run tests (`npm test`)
-   - Build Docker images
-   - Push to AWS ECR
-3. **Deploy Stage (AWS CodeDeploy):**
-   - Update Kubernetes deployments on AWS EKS
-   - Rolling update strategy (zero downtime)
+2. **Build Stage (CodeBuild):** Run tests, build Docker images, push to ECR
+3. **Deploy Stage (CodeDeploy):** Update K8s deployments on EKS with rolling updates
 
-### CodeBuild buildspec.yml Example
+Example `buildspec.yml`:
 
 ```yaml
 version: 0.2
@@ -783,7 +681,7 @@ phases:
       - docker build -t cloudretail/user-service -f services/user-service/Dockerfile .
       - docker tag cloudretail/user-service:latest $AWS_ACCOUNT_ID.dkr.ecr.eu-west-1.amazonaws.com/cloudretail/user-service:latest
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.eu-west-1.amazonaws.com/cloudretail/user-service:latest
-      # Repeat for other services...
+      # Repeat for other services
   post_build:
     commands:
       - aws eks update-kubeconfig --name cloudretail-cluster --region eu-west-1
@@ -792,197 +690,170 @@ phases:
 
 ---
 
-## 12. Verifying Everything Works
+## 12. Troubleshooting
 
-### Local Verification
+### Health check returns `unhealthy`
+
+The API gateway checks each service every 30 seconds. Services report unhealthy when they can't connect to their database. Wait 30 seconds after starting containers and try again.
 
 ```bash
-# 1. All containers running:
-docker-compose ps
+# Check which container is failing
+docker compose ps
 
-# 2. API Gateway responds:
-curl http://localhost:8080/health
-
-# 3. Can register and login:
-curl -X POST http://localhost:8080/api/users/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@test.com","password":"Test123!","firstName":"Test","lastName":"User"}'
-
-# 4. All tests pass:
-npm test
+# Check a specific service's logs
+docker compose logs user-service
+docker compose logs postgres-users
 ```
 
-### AWS Verification
+### Docker build fails with cache error
 
 ```bash
-# 1. All pods running on EKS:
-kubectl get pods -n cloudretail
-
-# 2. Services have endpoints:
-kubectl get endpoints -n cloudretail
-
-# 3. Ingress has external address:
-kubectl get ingress -n cloudretail
-
-# 4. HPA is active:
-kubectl get hpa -n cloudretail
-
-# 5. Test the external endpoint:
-curl https://cloudretail.example.com/health
+docker builder prune -f
+npm run docker:build
 ```
 
----
+### Registration returns no response or hangs
 
-## 13. Common Issues and Troubleshooting
+Make sure you include `"gdprConsent": true` in the request body. Without it, the request will return a 400 validation error.
 
-### "Port already in use"
-
-```bash
-# Find and kill the process using the port:
-lsof -i :3001
-kill -9 <PID>
-
-# Or change the port in the .env file
-```
-
-### Docker containers won't start
+### Port already in use
 
 ```bash
-# Check container logs:
-docker-compose logs user-service
+# Find what's using the port (example: port 3001)
+lsof -i :3001    # macOS/Linux
+netstat -ano | findstr :3001   # Windows
 
-# Rebuild containers:
-docker-compose build --no-cache
-docker-compose up -d
+# Kill it or change the port in .env
 ```
 
 ### Database connection errors
 
 ```bash
-# Check if PostgreSQL is running:
-docker-compose ps postgres-users
+# Check if the database container is running
+docker compose ps postgres-users
 
-# Check database logs:
-docker-compose logs postgres-users
+# Check database logs
+docker compose logs postgres-users
 
-# Verify connection:
-docker exec -it cloudretail_postgres-users_1 psql -U postgres -d cloudretail_users
-```
-
-### Kubernetes pods in CrashLoopBackOff
-
-```bash
-# Check pod logs:
-kubectl logs <pod-name> -n cloudretail
-
-# Check pod events:
-kubectl describe pod <pod-name> -n cloudretail
-
-# Common cause: incorrect ConfigMap/Secret values or database not reachable
-```
-
-### AWS EKS cluster not responding
-
-```bash
-# Update kubeconfig:
-aws eks update-kubeconfig --name cloudretail-cluster --region eu-west-1
-
-# Check cluster status:
-aws eks describe-cluster --name cloudretail-cluster --region eu-west-1
+# Connect directly to the database
+docker exec -it cloudretail-postgres-users-1 psql -U postgres -d cloudretail_users
 ```
 
 ### npm install fails
 
 ```bash
-# Clear npm cache:
 npm cache clean --force
-
-# Delete node_modules and reinstall:
 rm -rf node_modules
 rm -rf services/*/node_modules
 npm run install:all
 ```
 
+### Kubernetes pods in CrashLoopBackOff
+
+```bash
+kubectl logs <pod-name> -n cloudretail
+kubectl describe pod <pod-name> -n cloudretail
+# Usually caused by wrong ConfigMap/Secret values or unreachable database
+```
+
 ---
 
-## 14. Useful Commands Reference
+## 13. Commands Reference
 
-### Docker Commands
+### Docker (Local Development)
 
 ```bash
-npm run docker:build          # Build all images (including frontend)
-npm run docker:up             # Start all containers
-npm run docker:down           # Stop all containers
-docker-compose ps             # List running containers
-docker-compose logs -f        # Tail all logs
-docker-compose logs -f frontend  # Tail frontend logs
-docker-compose down -v        # Stop and delete all data
+npm run docker:build              # Build all images
+npm run docker:up                 # Start all 15 containers
+npm run docker:down               # Stop all containers
+docker compose ps                 # List running containers
+docker compose logs -f            # Tail all logs
+docker compose logs -f <service>  # Tail one service's logs
+docker compose down -v            # Stop and delete all data
 ```
 
-### Kubernetes Commands (AWS EKS)
+### Service Ports
+
+| Service | Port | URL |
+|---------|------|-----|
+| Frontend | 3000 | http://localhost:3000 |
+| API Gateway | 8080 | http://localhost:8080 |
+| User Service | 3001 | http://localhost:3001 |
+| Product Service | 3002 | http://localhost:3002 |
+| Order Service | 3003 | http://localhost:3003 |
+| Inventory Service | 3004 | http://localhost:3004 |
+| Payment Service | 3005 | http://localhost:3005 |
+| Event Bus | 4000 | http://localhost:4000 |
+| PostgreSQL (users) | 5432 | — |
+| PostgreSQL (products) | 5433 | — |
+| PostgreSQL (orders) | 5434 | — |
+| PostgreSQL (inventory) | 5435 | — |
+| PostgreSQL (payments) | 5436 | — |
+| Redis | 6379 | — |
+| Kafka | 9092 | — |
+
+### Testing
 
 ```bash
-kubectl get pods -n cloudretail              # List all pods
-kubectl get services -n cloudretail          # List all services
-kubectl get hpa -n cloudretail               # Check auto-scaling
-kubectl logs -f deployment/<name> -n cloudretail  # View service logs
-kubectl describe pod <name> -n cloudretail   # Debug a pod
-kubectl scale deployment <name> --replicas=5 -n cloudretail  # Manual scale
-kubectl rollout restart deployment/<name> -n cloudretail      # Restart service
-kubectl exec -it <pod-name> -n cloudretail -- /bin/sh         # Shell into pod
+npm test                  # All tests
+npm run test:unit         # Unit tests only
+npm run test:integration  # Integration tests (requires Docker Compose running)
+npm run test:performance  # Load tests with Artillery
 ```
 
-### AWS CLI Commands
+### Dev Mode (Without Docker)
 
 ```bash
-aws eks list-clusters                        # List EKS clusters
+npm run dev:user        # User Service with hot-reload
+npm run dev:product     # Product Service
+npm run dev:order       # Order Service
+npm run dev:inventory   # Inventory Service
+npm run dev:payment     # Payment Service
+npm run dev:gateway     # API Gateway
+npm run dev:eventbus    # Event Bus
+```
+
+### Kubernetes (AWS EKS)
+
+```bash
+kubectl get pods -n cloudretail                          # List pods
+kubectl get services -n cloudretail                      # List services
+kubectl get hpa -n cloudretail                           # Check auto-scaling
+kubectl logs -f deployment/<name> -n cloudretail         # View logs
+kubectl describe pod <name> -n cloudretail               # Debug a pod
+kubectl rollout restart deployment/<name> -n cloudretail # Restart service
+```
+
+### AWS CLI
+
+```bash
+aws eks list-clusters                                    # List EKS clusters
 aws ecr list-images --repository-name cloudretail/user-service  # List images
-aws rds describe-db-instances                # List RDS databases
-aws elasticache describe-cache-clusters      # List Redis clusters
-aws logs tail /cloudretail/services --follow # Tail CloudWatch logs
-```
-
-### Testing Commands
-
-```bash
-npm test                      # Run all tests
-npm run test:unit             # Unit tests only (605 tests)
-npm run test:integration      # Integration tests (51 tests)
-npm run test:performance      # Load tests with Artillery
-```
-
-### Service-Specific Commands
-
-```bash
-npm run dev:user              # Start User Service in dev mode
-npm run dev:product           # Start Product Service in dev mode
-npm run dev:order             # Start Order Service in dev mode
-npm run dev:inventory         # Start Inventory Service in dev mode
-npm run dev:payment           # Start Payment Service in dev mode
-npm run dev:eventbus          # Start Event Bus in dev mode
-npm run dev:gateway           # Start API Gateway in dev mode
+aws rds describe-db-instances                            # List RDS databases
+aws elasticache describe-cache-clusters                  # List Redis clusters
+aws logs tail /cloudretail/services --follow             # Tail CloudWatch logs
 ```
 
 ---
 
-## Summary of AWS Services You Will Set Up
+## AWS Services Summary
 
-| Step | AWS Service | What It Does |
-|---|---|---|
-| 7.3 | **AWS EKS** | Runs the Kubernetes cluster that hosts all containers |
-| 7.4 | **AWS ECR** | Stores Docker images for all 7 services |
-| 7.5 | **AWS RDS** | Hosts 5 PostgreSQL databases (one per microservice) |
-| 7.6 | **AWS ElastiCache** | Hosts the Redis cache for sessions and API responses |
-| 7.7 | **AWS MSK** | Hosts the Kafka cluster for event-driven messaging |
-| 7.8 | **AWS Secrets Manager** | Securely stores passwords and API keys |
-| 8.5 | **AWS ALB** | Load balances traffic to your services |
-| 8.6 | **AWS Route 53** | Manages DNS for your domain |
-| 9.1 | **AWS Managed Prometheus** | Collects metrics from all services |
-| 9.2 | **AWS Managed Grafana** | Visualizes metrics in dashboards |
-| 9.3 | **AWS CloudWatch** | Collects logs and triggers alarms |
-| 9.4 | **AWS SNS** | Sends alert notifications (email, Slack) |
-| 10 | **AWS CodePipeline/CodeBuild** | Automates build, test, and deploy |
+| AWS Service | Replaces | Purpose |
+|-------------|----------|---------|
+| **EKS** | Docker Compose | Managed Kubernetes for running containers |
+| **ECR** | Local images | Docker image registry |
+| **RDS** (x5) | PostgreSQL containers | Managed databases (one per microservice) |
+| **ElastiCache** | Redis container | Managed Redis for caching and events |
+| **MSK** | Kafka + Zookeeper | Managed Kafka for event streaming |
+| **ALB** | localhost:8080 | Internet-facing load balancer |
+| **Route 53** | — | DNS management |
+| **Secrets Manager** | .env files | Secure credential storage |
+| **CloudWatch** | docker logs | Centralized logging and alarms |
+| **Managed Prometheus** | — | Metrics collection |
+| **Managed Grafana** | — | Metrics dashboards |
+| **SNS** | — | Alert notifications |
+| **CodePipeline + CodeBuild** | — | CI/CD automation |
 
 ---
 
-*Document Version: 1.0 | February 2026 | COMP60010 Assignment*
+*COMP60010 | February 2026*
