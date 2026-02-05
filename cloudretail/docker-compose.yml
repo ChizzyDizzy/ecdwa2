@@ -131,7 +131,7 @@ services:
     ports:
       - "3001:3001"
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 3001
       DB_HOST: postgres-users
       DB_PORT: 5432
@@ -142,8 +142,10 @@ services:
       EVENT_BUS_URL: http://event-bus:4000/events
       LOG_LEVEL: info
     depends_on:
-      - postgres-users
-      - event-bus
+      postgres-users:
+        condition: service_healthy
+      event-bus:
+        condition: service_started
     restart: unless-stopped
 
   product-service:
@@ -153,7 +155,7 @@ services:
     ports:
       - "3002:3002"
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 3002
       DB_HOST: postgres-products
       DB_PORT: 5432
@@ -163,8 +165,10 @@ services:
       EVENT_BUS_URL: http://event-bus:4000/events
       LOG_LEVEL: info
     depends_on:
-      - postgres-products
-      - event-bus
+      postgres-products:
+        condition: service_healthy
+      event-bus:
+        condition: service_started
     restart: unless-stopped
 
   order-service:
@@ -174,7 +178,7 @@ services:
     ports:
       - "3003:3003"
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 3003
       DB_HOST: postgres-orders
       DB_PORT: 5432
@@ -186,9 +190,12 @@ services:
       PAYMENT_SERVICE_URL: http://payment-service:3005
       LOG_LEVEL: info
     depends_on:
-      - postgres-orders
-      - event-bus
-      - inventory-service
+      postgres-orders:
+        condition: service_healthy
+      event-bus:
+        condition: service_started
+      inventory-service:
+        condition: service_started
     restart: unless-stopped
 
   inventory-service:
@@ -198,7 +205,7 @@ services:
     ports:
       - "3004:3004"
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 3004
       DB_HOST: postgres-inventory
       DB_PORT: 5432
@@ -208,8 +215,10 @@ services:
       EVENT_BUS_URL: http://event-bus:4000/events
       LOG_LEVEL: info
     depends_on:
-      - postgres-inventory
-      - event-bus
+      postgres-inventory:
+        condition: service_healthy
+      event-bus:
+        condition: service_started
     restart: unless-stopped
 
   payment-service:
@@ -219,7 +228,7 @@ services:
     ports:
       - "3005:3005"
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       PORT: 3005
       DB_HOST: postgres-payments
       DB_PORT: 5432
@@ -230,8 +239,10 @@ services:
       ORDER_SERVICE_URL: http://order-service:3003
       LOG_LEVEL: info
     depends_on:
-      - postgres-payments
-      - event-bus
+      postgres-payments:
+        condition: service_healthy
+      event-bus:
+        condition: service_started
     restart: unless-stopped
 
   # Event Bus
@@ -249,8 +260,10 @@ services:
       REDIS_URL: redis://redis:6379
       LOG_LEVEL: info
     depends_on:
-      - kafka
-      - redis
+      kafka:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   # API Gateway
