@@ -96,7 +96,7 @@ docker compose up --build -d
 ```
 
 This starts 10 containers:
-- 1 PostgreSQL (with 5 databases created by `init-db.sh`)
+- 1 PostgreSQL (with 5 databases created by `init-db.sql`)
 - 1 Redis
 - 1 Zookeeper + 1 Kafka
 - 5 microservices (user, product, order, inventory, payment)
@@ -787,7 +787,7 @@ All URLs are prefixed with `http://localhost:8080` (local) or `http://<EC2_IP>:8
                5 databases)                    [Kafka] + [Redis]
 ```
 
-- **Local**: Single PostgreSQL container with `init-db.sh` creating 5 databases
+- **Local**: Single PostgreSQL container with `init-db.sql` creating 5 databases
 - **AWS**: Single RDS db.t3.micro instance with 5 databases (free tier)
 - **Region**: ap-southeast-1 (Singapore)
 
