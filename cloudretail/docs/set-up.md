@@ -167,11 +167,28 @@ curl -s -X POST http://localhost:8080/api/users/login \
 
 ### 4.3 Create a product (requires admin/vendor token)
 
+Replace `USER_ID` with the `id` field from the registration response in step 4.1:
+
 ```bash
 curl -s -X POST http://localhost:8080/api/products/products \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d "{\"name\":\"Wireless Headset\",\"description\":\"7.1 surround sound headset\",\"price\":79.99,\"category\":\"electronics\",\"sku\":\"WGH-001\"}"
+  -d "{\"name\":\"Wireless Headset\",\"description\":\"7.1 surround sound headset\",\"price\":79.99,\"category\":\"electronics\",\"sku\":\"WGH-001\",\"vendorId\":\"USER_ID\"}"
+```
+
+**Tip**: To save the user ID from registration into a variable:
+
+```bash
+USER_ID="paste-your-user-id-here"
+```
+
+Then use it:
+
+```bash
+curl -s -X POST http://localhost:8080/api/products/products \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d "{\"name\":\"Wireless Headset\",\"description\":\"7.1 surround sound headset\",\"price\":79.99,\"category\":\"electronics\",\"sku\":\"WGH-001\",\"vendorId\":\"$USER_ID\"}"
 ```
 
 ### 4.4 List products (public)
@@ -193,11 +210,13 @@ curl -s -X POST http://localhost:8080/api/inventory/inventory \
 
 ### 4.6 Place an order (requires any authenticated user token)
 
+Replace `PRODUCT_ID` with the actual product ID from step 4.3:
+
 ```bash
 curl -s -X POST http://localhost:8080/api/orders/orders \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d "{\"items\":[{\"productId\":\"PRODUCT_ID\",\"quantity\":2,\"price\":79.99}],\"shippingAddress\":\"123 Cloud Street\",\"totalAmount\":165.97}"
+  -d "{\"items\":[{\"productId\":\"PRODUCT_ID\",\"productName\":\"Wireless Headset\",\"quantity\":2,\"price\":79.99}],\"shippingAddress\":{\"street\":\"123 Cloud Street\",\"city\":\"Singapore\",\"state\":\"SG\",\"zipCode\":\"049712\",\"country\":\"Singapore\"}}"
 ```
 
 ### 4.7 List orders
@@ -282,15 +301,13 @@ echo "RDS Host: $RDS_HOST"
 
 ### 5.4 Create the remaining 4 databases
 
-Use Docker to run psql (no local install needed):
+Use Docker to run psql (no local install needed). Each `CREATE DATABASE` must run as a separate command (PostgreSQL does not allow `CREATE DATABASE` inside a transaction block):
 
 ```bash
-docker run --rm -e PGPASSWORD=CloudRetail2026db postgres:15-alpine psql -h $RDS_HOST -U postgres -d cloudretail_users -c "
-  CREATE DATABASE cloudretail_products;
-  CREATE DATABASE cloudretail_orders;
-  CREATE DATABASE cloudretail_inventory;
-  CREATE DATABASE cloudretail_payments;
-"
+docker run --rm -e PGPASSWORD=CloudRetail2026db postgres:15-alpine psql -h $RDS_HOST -U postgres -d cloudretail_users -c "CREATE DATABASE cloudretail_products;"
+docker run --rm -e PGPASSWORD=CloudRetail2026db postgres:15-alpine psql -h $RDS_HOST -U postgres -d cloudretail_users -c "CREATE DATABASE cloudretail_orders;"
+docker run --rm -e PGPASSWORD=CloudRetail2026db postgres:15-alpine psql -h $RDS_HOST -U postgres -d cloudretail_users -c "CREATE DATABASE cloudretail_inventory;"
+docker run --rm -e PGPASSWORD=CloudRetail2026db postgres:15-alpine psql -h $RDS_HOST -U postgres -d cloudretail_users -c "CREATE DATABASE cloudretail_payments;"
 ```
 
 **Verify all 5 databases exist:**
