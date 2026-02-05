@@ -1,6 +1,6 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import { createProxyMiddleware } from 'http-proxy-middleware';
+import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
 import {
   requestLogger,
   errorHandler,
@@ -78,6 +78,7 @@ app.use(
     pathRewrite: {
       '^/api/users': '/api/users',
     },
+    onProxyReq: fixRequestBody,
     onError: (err, req, res) => {
       logger.error('Proxy error - User Service', { error: err.message });
       (res as any).status(503).json({
@@ -103,6 +104,7 @@ app.use(
     pathRewrite: {
       '^/api/products': '/api/products',
     },
+    onProxyReq: fixRequestBody,
     onError: (err, req, res) => {
       logger.error('Proxy error - Product Service', { error: err.message });
       (res as any).status(503).json({
@@ -128,6 +130,7 @@ app.use(
     pathRewrite: {
       '^/api/orders': '/api/orders',
     },
+    onProxyReq: fixRequestBody,
     onError: (err, req, res) => {
       logger.error('Proxy error - Order Service', { error: err.message });
       (res as any).status(503).json({
@@ -153,6 +156,7 @@ app.use(
     pathRewrite: {
       '^/api/inventory': '/api/inventory',
     },
+    onProxyReq: fixRequestBody,
     onError: (err, req, res) => {
       logger.error('Proxy error - Inventory Service', { error: err.message });
       (res as any).status(503).json({
@@ -178,6 +182,7 @@ app.use(
     pathRewrite: {
       '^/api/payments': '/api/payments',
     },
+    onProxyReq: fixRequestBody,
     onError: (err, req, res) => {
       logger.error('Proxy error - Payment Service', { error: err.message });
       (res as any).status(503).json({
