@@ -160,18 +160,24 @@ docker compose logs api-gateway
 
 Once the health check returns `healthy`, test the full flow.
 
-### 6.1 Register a User
+> **Windows Git Bash users:** The `!` character triggers bash history expansion.
+> Either run `set +H` first, use PowerShell, or use passwords without `!`
+> (the examples below avoid `!` for this reason).
 
-**Important:** The `gdprConsent` field is required and must be `true`.
+### 6.1 Register an Admin User
+
+Register with `"role": "admin"` so you can create products and manage inventory.
+The `gdprConsent` field is required and must be `true`.
 
 ```bash
-curl -X POST http://localhost:8080/api/users/register \
+curl -s -X POST http://localhost:8080/api/users/register \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "test@example.com",
-    "password": "Password123!",
-    "firstName": "Test",
+    "email": "admin@cloudretail.com",
+    "password": "Admin123Secure",
+    "firstName": "Admin",
     "lastName": "User",
+    "role": "admin",
     "gdprConsent": true
   }'
 ```
@@ -184,58 +190,66 @@ Expected response:
     "token": "eyJhbGciOiJIUzI1NiIs...",
     "user": {
       "id": "...",
-      "email": "test@example.com",
-      "firstName": "Test",
+      "email": "admin@cloudretail.com",
+      "firstName": "Admin",
       "lastName": "User",
-      "role": "customer"
+      "role": "admin"
     }
   }
 }
 ```
 
-Save the `token` value — you need it for authenticated requests.
+Copy the `token` value — you need it for all the following requests.
+Replace `<TOKEN>` in the commands below with your actual token.
 
 ### 6.2 Login
 
 ```bash
-curl -X POST http://localhost:8080/api/users/login \
+curl -s -X POST http://localhost:8080/api/users/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "test@example.com",
-    "password": "Password123!"
+    "email": "admin@cloudretail.com",
+    "password": "Admin123Secure"
   }'
 ```
 
-Returns the same format with a JWT token.
+Returns the same format with a fresh JWT token.
 
-### 6.3 Create a Product (use your token)
+### 6.3 Create a Product
+
+Creating products requires `admin` or `vendor` role.
 
 ```bash
-curl -X POST http://localhost:8080/api/products \
+curl -s -X POST http://localhost:8080/api/products/products \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Authorization: Bearer <TOKEN>" \
   -d '{
-    "name": "Test Product",
-    "description": "A test product",
-    "price": 29.99,
+    "name": "Wireless Gaming Headset",
+    "description": "Premium 7.1 surround sound headset with RGB lighting",
+    "price": 79.99,
     "category": "electronics",
-    "sku": "TEST-001"
+    "sku": "WGH-001"
   }'
 ```
+
+Copy the `id` from the response — you need it for inventory and orders.
 
 ### 6.4 List Products
 
 ```bash
-curl http://localhost:8080/api/products \
-  -H "Authorization: Bearer <YOUR_TOKEN>"
+curl -s http://localhost:8080/api/products/products
 ```
+
+Products are public — no authentication required to list them.
 
 ### 6.5 Create Inventory for the Product
 
+Creating inventory requires `admin` or `vendor` role.
+
 ```bash
-curl -X POST http://localhost:8080/api/inventory \
+curl -s -X POST http://localhost:8080/api/inventory/inventory \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Authorization: Bearer <TOKEN>" \
   -d '{
     "productId": "<PRODUCT_ID_FROM_STEP_6.3>",
     "quantity": 100,
@@ -248,15 +262,15 @@ curl -X POST http://localhost:8080/api/inventory \
 ### 6.6 Place an Order
 
 ```bash
-curl -X POST http://localhost:8080/api/orders \
+curl -s -X POST http://localhost:8080/api/orders/orders \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer <YOUR_TOKEN>" \
+  -H "Authorization: Bearer <TOKEN>" \
   -d '{
     "items": [
       {
         "productId": "<PRODUCT_ID>",
         "quantity": 2,
-        "price": 29.99
+        "price": 79.99
       }
     ],
     "shippingAddress": {
@@ -268,13 +282,20 @@ curl -X POST http://localhost:8080/api/orders \
   }'
 ```
 
-### 6.7 Check Event Bus Stats
+### 6.7 View Your Orders
 
 ```bash
-curl http://localhost:4000/events/stats
+curl -s http://localhost:8080/api/orders/orders \
+  -H "Authorization: Bearer <TOKEN>"
 ```
 
-This shows how many events have been published across the system (user.created, product.created, order.created, etc.).
+### 6.8 Check Event Bus Stats
+
+```bash
+curl -s http://localhost:4000/events/stats
+```
+
+Shows how many events have been published across the system (user.created, product.created, order.created, etc.).
 
 ---
 

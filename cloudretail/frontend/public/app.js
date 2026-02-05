@@ -232,15 +232,10 @@ async function loadProducts() {
   if (res.ok && res.data && res.data.data) {
     const d = res.data.data;
     products = Array.isArray(d) ? d : d.products || [];
-    if (products.length === 0) {
-      products = DEMO_PRODUCTS;
-      addEventLogEntry('PRODUCTS_LOADED', 'Catalog empty - showing demo products');
-    } else {
-      addEventLogEntry('PRODUCTS_LOADED', products.length + ' items from Product Service');
-    }
+    addEventLogEntry('PRODUCTS_LOADED', products.length + ' items from Product Service');
   } else {
-    products = DEMO_PRODUCTS;
-    addEventLogEntry('PRODUCTS_LOADED', 'Using demo catalog (Product Service offline)');
+    products = [];
+    addEventLogEntry('PRODUCTS_LOADED', 'Product Service offline');
   }
 
   state.products = products;
