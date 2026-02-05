@@ -32,16 +32,24 @@ export class EventPublisher {
 
       // In production, this would publish to Kafka, AWS EventBridge, or similar
       // For now, we'll use HTTP POST to event bus
-      const response = await fetch(this.eventBusUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(eventMessage),
-      });
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
 
-      if (!response.ok) {
-        throw new Error(`Event bus returned status ${response.status}`);
+      try {
+        const response = await fetch(this.eventBusUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(eventMessage),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Event bus returned status ${response.status}`);
+        }
+      } finally {
+        clearTimeout(timeout);
       }
 
       logger.info('Event published successfully', {
