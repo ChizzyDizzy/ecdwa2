@@ -53,7 +53,7 @@ The CloudRetail platform includes a **pixelated retro-themed frontend** that con
 | Container orchestration | **AWS EKS (Elastic Kubernetes Service)** — Kubernetes 1.28+ with 22 manifest files | `infrastructure/kubernetes/*.yaml` |
 | Container registry | **AWS ECR (Elastic Container Registry)** — stores built Docker images | Referenced in deployment pipeline |
 | Static asset delivery | **AWS S3** for static asset storage + **AWS CloudFront** CDN for global caching | Multi-layer caching strategy in `docs/architecture/SCALABILITY.md` |
-| Database-per-service | 5 separate PostgreSQL 15 instances (one per microservice), managed via **AWS RDS** in production | `docker-compose.yml` (lines 5-83), `infrastructure/kubernetes/postgres-statefulset.yaml` |
+| Database-per-service | 5 PostgreSQL 15 databases on a single **AWS RDS** instance (one database per microservice, free-tier optimized) | `docker-compose.yml`, `init-db.sh`, `infrastructure/kubernetes/postgres-statefulset.yaml` |
 | In-memory caching | Redis 7 for session storage, API response caching, and pub/sub — deployable on **AWS ElastiCache** | `docker-compose.yml` (lines 86-96), `infrastructure/kubernetes/redis-deployment.yaml` |
 | Message broker | Apache Kafka 7.5 with Zookeeper — deployable on **AWS MSK (Managed Streaming for Kafka)** | `docker-compose.yml` (lines 98-124), `infrastructure/kubernetes/kafka-statefulset.yaml` |
 | Single entry point | Custom API Gateway (Express.js on port 8080) with routing, auth, and rate limiting — fronted by **AWS Application Load Balancer (ALB)** | `api-gateway/src/` |
@@ -64,7 +64,7 @@ The CloudRetail platform includes a **pixelated retro-themed frontend** that con
 
 - **AWS EKS** — Managed Kubernetes cluster for all container orchestration
 - **AWS ECR** — Private Docker image registry
-- **AWS RDS (PostgreSQL)** — Managed relational databases for each microservice
+- **AWS RDS (PostgreSQL)** — Managed relational database (single instance, 5 databases)
 - **AWS ElastiCache (Redis)** — Managed caching layer
 - **AWS MSK** — Managed Kafka cluster for event-driven messaging
 - **AWS S3 + CloudFront** — Static asset storage and CDN
@@ -182,7 +182,7 @@ The CloudRetail platform includes a **pixelated retro-themed frontend** that con
 | Multi-AZ deployment | Pod anti-affinity rules for spreading across **AWS Availability Zones** | Kubernetes deployment configurations |
 | Disaster recovery | RTO: 30 seconds, RPO: 1 minute | Architecture documentation |
 | Database backups | WAL archiving + daily full backups to **AWS S3**; point-in-time recovery via **AWS RDS** | Database configuration |
-| Multi-region failover | Primary: US-East (**AWS us-east-1**), Failover: EU-West (**AWS eu-west-1**) with **AWS Route 53** DNS failover | `docs/architecture/FAULT-TOLERANCE.md` |
+| Multi-region failover | Primary: **AWS ap-southeast-1** (Singapore), Failover: **AWS ap-southeast-2** (Sydney) with **AWS Route 53** DNS failover | `docs/architecture/FAULT-TOLERANCE.md` |
 | Chaos engineering | 5 chaos experiments validated: pod kill (< 15s recovery), network latency, DB connection loss, CPU stress, memory leak | `docs/architecture/FAULT-TOLERANCE.md` |
 | Graceful degradation | Circuit breakers return cached data or degraded responses when downstream services fail | `shared/middleware/circuit-breaker.middleware.ts` |
 
@@ -369,7 +369,7 @@ The CloudRetail platform includes a **pixelated retro-themed frontend** that con
 |---|---|
 | **EKS** | Managed Kubernetes cluster for container orchestration |
 | **ECR** | Private Docker container image registry |
-| **RDS (PostgreSQL)** | Managed relational databases (5 instances) |
+| **RDS (PostgreSQL)** | Managed relational database (single instance, 5 databases) |
 | **ElastiCache (Redis)** | Managed caching and session storage |
 | **MSK** | Managed Apache Kafka for event-driven architecture |
 | **S3** | Static asset storage, database backups |
