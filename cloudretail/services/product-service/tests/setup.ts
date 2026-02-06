@@ -1,7 +1,6 @@
 /**
  * Test setup for Product Service
  */
-import { jest, beforeEach } from '@jest/globals';
 
 process.env.NODE_ENV = 'test';
 process.env.DB_HOST = 'localhost';
