@@ -1,6 +1,7 @@
 /**
  * Test setup for User Service
  */
+import { jest, beforeEach } from '@jest/globals';
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-secret-key';
