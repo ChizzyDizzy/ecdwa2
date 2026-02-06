@@ -14,7 +14,7 @@ process.env.PAYMENT_SERVICE_URL = 'http://localhost:3005';
 
 // Mock logger
 jest.mock('@cloudretail/middleware', () => ({
-  ...jest.requireActual('@cloudretail/middleware'),
+  ...(jest.requireActual('@cloudretail/middleware') as object),
   logger: {
     info: jest.fn(),
     error: jest.fn(),
