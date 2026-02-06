@@ -187,6 +187,59 @@
         <p class="pixel-subtitle">System overview - AWS Cloud Infrastructure</p>
       </div>
 
+      <!-- Admin Management Forms -->
+      <div class="admin-forms pixel-box" style="margin-bottom: 1rem;">
+        <h3 class="card-title">PRODUCT MANAGEMENT</h3>
+        <div class="admin-form-grid">
+          <!-- Add Product Form -->
+          <div class="admin-form-section">
+            <h4>Add New Product</h4>
+            <form onsubmit="handleAddProduct(event)" class="admin-form">
+              <input type="text" id="admin-product-name" class="pixel-input" placeholder="Product Name" required>
+              <input type="text" id="admin-product-desc" class="pixel-input" placeholder="Description" required>
+              <input type="number" id="admin-product-price" class="pixel-input" placeholder="Price" step="0.01" min="0" required>
+              <select id="admin-product-category" class="pixel-select" required>
+                <option value="">Select Category</option>
+                <option value="electronics">Electronics</option>
+                <option value="clothing">Clothing</option>
+                <option value="books">Books</option>
+                <option value="home">Home & Garden</option>
+                <option value="sports">Sports</option>
+              </select>
+              <input type="text" id="admin-product-sku" class="pixel-input" placeholder="SKU (e.g., PROD-001)" required>
+              <button type="submit" class="pixel-btn pixel-btn-primary">ADD PRODUCT</button>
+            </form>
+          </div>
+
+          <!-- Add Inventory Form -->
+          <div class="admin-form-section">
+            <h4>Add/Update Inventory</h4>
+            <form onsubmit="handleAddInventory(event)" class="admin-form">
+              <select id="admin-inv-product" class="pixel-select" required>
+                <option value="">Select Product</option>
+                <!-- Populated by JS -->
+              </select>
+              <input type="number" id="admin-inv-quantity" class="pixel-input" placeholder="Quantity" min="0" required>
+              <input type="text" id="admin-inv-warehouse" class="pixel-input" placeholder="Warehouse (e.g., SG-01)" required>
+              <button type="submit" class="pixel-btn pixel-btn-primary">ADD STOCK</button>
+            </form>
+          </div>
+
+          <!-- Delete Product -->
+          <div class="admin-form-section">
+            <h4>Delete Product</h4>
+            <form onsubmit="handleDeleteProduct(event)" class="admin-form">
+              <select id="admin-delete-product" class="pixel-select" required>
+                <option value="">Select Product to Delete</option>
+                <!-- Populated by JS -->
+              </select>
+              <button type="submit" class="pixel-btn pixel-btn-danger">DELETE PRODUCT</button>
+            </form>
+          </div>
+        </div>
+        <div id="admin-message" class="admin-message hidden"></div>
+      </div>
+
       <!-- Service Health -->
       <div class="admin-grid">
         <div class="pixel-box admin-card">
