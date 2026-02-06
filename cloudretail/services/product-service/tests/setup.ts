@@ -12,7 +12,7 @@ process.env.DB_PASSWORD = 'test';
 
 // Mock logger
 jest.mock('@cloudretail/middleware', () => ({
-  ...jest.requireActual('@cloudretail/middleware'),
+  ...(jest.requireActual('@cloudretail/middleware') as object),
   logger: {
     info: jest.fn(),
     error: jest.fn(),
