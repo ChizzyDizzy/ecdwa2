@@ -4,7 +4,8 @@
  */
 
 import { OrderService } from '../../src/services/order.service';
-import { Order, OrderItem } from '../../src/config/database';
+import { Order } from '../../src/config/database';
+import { OrderItem } from '../../src/models/Order.model';
 import {
   NotFoundError,
   ValidationError,
@@ -149,8 +150,8 @@ describe('OrderService', () => {
       const orderDataWithMultipleItems = {
         ...validOrderData,
         items: [
-          { productId: 'product-1', quantity: 2, price: 50.00 },
-          { productId: 'product-2', quantity: 1, price: 100.00 },
+          { productId: 'product-1', quantity: 2, price: 50.00, subtotal: 100.00 },
+          { productId: 'product-2', quantity: 1, price: 100.00, subtotal: 100.00 },
         ],
       };
 

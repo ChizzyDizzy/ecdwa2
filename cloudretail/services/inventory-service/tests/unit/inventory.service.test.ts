@@ -390,13 +390,13 @@ describe('InventoryService', () => {
       // Arrange
       const items = [{ productId: 'product-1', quantity: 5 }];
 
-      const mockInventory = {
+      const mockInventory: any = {
         id: 'inventory-123',
         productId: 'product-1',
         quantity: 5,
         reservedQuantity: 5,
-        update: jest.fn().mockImplementation(function(updates) {
-          this.quantity = updates.quantity;
+        update: jest.fn().mockImplementation((updates: any) => {
+          mockInventory.quantity = updates.quantity;
           return Promise.resolve(undefined);
         }),
       };
