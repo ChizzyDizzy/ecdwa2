@@ -146,9 +146,11 @@ docker compose logs user-service --tail 20
 # Show event-bus processing events
 docker compose logs event-bus --tail 20
 
-# Show Kafka processing
-docker compose logs kafka --tail 20
+# Show Redis (used for caching and pub/sub)
+docker compose logs redis --tail 20
 ```
+
+> **Note**: Kafka is not running on AWS free tier due to memory constraints. See Section 4 for the explanation.
 
 ---
 
@@ -255,7 +257,139 @@ docker compose logs kafka --tail 20
 
 ---
 
-## 4. Showing the Kubernetes Manifests
+## 4. Explaining Kafka / Free Tier Limitations
+
+### Why Kafka is not running in AWS deployment
+
+**The situation:**
+Kafka requires minimum 1GB heap memory (`-Xmx1G -Xms1G`), but EC2 t3.micro only has 1GB total RAM. With 8 microservices + Redis + Zookeeper running, there's insufficient memory for Kafka.
+
+**How to explain this in viva:**
+
+> "In the local development environment, we run Apache Kafka for event-driven communication between microservices. However, the AWS free tier only provides t3.micro instances with 1GB RAM. Kafka alone requires 1GB heap memory, which makes it impossible to run alongside our 8 microservices on a single instance.
+>
+> In a production environment, we would use **AWS MSK (Managed Streaming for Apache Kafka)**, which is a fully managed Kafka service. MSK handles the infrastructure, scaling, and maintenance. However, MSK is not part of the free tier - the smallest MSK cluster costs approximately $150-200/month.
+>
+> For this demonstration, we've designed the application with **graceful degradation**. The event publishing is fire-and-forget with a 3-second timeout. If Kafka is unavailable, the core operations (user registration, product creation, order placement) still succeed - only the asynchronous event propagation is skipped. This demonstrates the resilience pattern recommended for microservices."
+
+### Free Tier Alternatives for Event-Driven Architecture
+
+| Option | Description | Cost |
+|--------|-------------|------|
+| **Redis Pub/Sub** (current) | Already running Redis - can use its pub/sub for lightweight messaging | Free (using existing Redis) |
+| **AWS SNS + SQS** | Simple Notification Service + Simple Queue Service | Free tier: 1M SNS requests, 1M SQS requests/month |
+| **AWS EventBridge** | Serverless event bus | Free tier: First 14M events/month |
+
+### What we're using instead
+
+The application currently uses **Redis Pub/Sub** for cache invalidation and lightweight event propagation. This is a valid alternative that:
+- Runs within the t3.micro memory constraints
+- Provides pub/sub messaging capabilities
+- Is already part of our stack for caching
+
+### Code showing graceful degradation
+
+In the event publishers, we use AbortController with a 3-second timeout:
+
+```typescript
+// From services/*/src/services/*.service.ts
+const controller = new AbortController();
+const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+try {
+  await fetch(eventBusUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(event),
+    signal: controller.signal,
+  });
+} catch (error) {
+  // Event publishing failed - log but don't fail the operation
+  logger.warn('Event publishing failed', { error });
+} finally {
+  clearTimeout(timeoutId);
+}
+```
+
+### If asked "Can you show Kafka working?"
+
+1. **Local demo**: Run `docker-compose up -d` locally where Kafka works
+2. **Explain**: "Kafka runs locally but not on AWS free tier due to memory constraints"
+3. **Show the code**: Point to the Event Bus service and Kafka configuration files
+4. **Show the alternative**: Demonstrate Redis is running and handling pub/sub
+
+```bash
+# On EC2, show Redis is running
+docker-compose logs redis --tail 10
+
+# Show event-bus is processing (via Redis fallback)
+docker-compose logs event-bus --tail 20
+```
+
+---
+
+## 5. Deployment Duration & Free Tier Limits
+
+### Will my deployment last until the 13th?
+
+**Yes**, as long as you don't exceed free tier limits:
+
+| Resource | Free Tier Limit | Your Usage | Will it last? |
+|----------|-----------------|------------|---------------|
+| EC2 t3.micro | 750 hours/month | 24/7 = 744 hours | Yes |
+| RDS db.t3.micro | 750 hours/month | 24/7 = 744 hours | Yes |
+| ECR Storage | 500 MB/month | ~200 MB (8 images) | Yes |
+| Data Transfer | 15 GB/month outbound | Minimal for demo | Yes |
+
+### Important: Keep it running
+
+- **DO NOT** stop the EC2 instance (you'll lose your running containers)
+- **DO NOT** delete the RDS instance (you'll lose all data)
+- The free tier resets on the 1st of each month
+
+### Check your usage
+
+```bash
+# AWS Console > Billing > Free Tier
+# Or via CLI (requires Cost Explorer access)
+aws ce get-cost-and-usage \
+  --time-period Start=2026-02-01,End=2026-02-28 \
+  --granularity DAILY \
+  --metrics "UnblendedCost"
+```
+
+### If something goes wrong before the 13th
+
+1. **EC2 stopped accidentally**: Start it again, re-run `docker-compose up -d`
+2. **RDS stopped accidentally**: Start it again, services will reconnect
+3. **Containers crashed**: SSH in and run `docker-compose up -d`
+4. **Out of memory**: Check `docker stats`, restart containers
+
+### Quick recovery commands
+
+```bash
+# SSH into EC2
+ssh -i your-key.pem ec2-user@YOUR_EC2_IP
+
+# Restore environment variables
+export AWS_ACCOUNT_ID="850874728684"
+export RDS_HOST="cloudretail-db.cjy40oge00uf.ap-southeast-1.rds.amazonaws.com"
+export DB_PASSWORD="CloudRetail2026db"
+export JWT_SECRET="cloudretail-jwt-secret-2026"
+export ECR_PREFIX="$AWS_ACCOUNT_ID.dkr.ecr.ap-southeast-1.amazonaws.com"
+
+# Restart all containers
+docker-compose down
+docker-compose up -d
+
+# Verify
+docker-compose ps
+curl http://localhost:8080/health
+```
+
+---
+
+## 7. Showing the Kubernetes Manifests
 
 Even if not deployed on EKS, you can show the production-ready Kubernetes configuration:
 
@@ -289,7 +423,7 @@ Key points to mention:
 
 ---
 
-## 5. Showing the Monitoring Stack
+## 8. Showing the Monitoring Stack
 
 Show the monitoring configuration files:
 
@@ -316,7 +450,7 @@ Key points:
 
 ---
 
-## 6. Showing the Test Suite
+## 9. Showing the Test Suite
 
 ```bash
 # Show test files
@@ -337,7 +471,7 @@ Key metrics:
 
 ---
 
-## 7. Quick Reference - What to Say About Each AWS Service
+## 10. Quick Reference - What to Say About Each AWS Service
 
 | AWS Service | One-liner for viva |
 |-------------|-------------------|

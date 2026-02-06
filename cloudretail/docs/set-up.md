@@ -23,13 +23,13 @@
 
 Install these before starting:
 
-| Tool | Version | Check command |
-|------|---------|---------------|
-| Git | Any | `git --version` |
-| Docker Desktop | 4.x+ | `docker --version` |
-| Node.js | 20.x | `node --version` |
-| npm | 9.x+ | `npm --version` |
-| AWS CLI | 2.x | `aws --version` |
+| Tool           | Version | Check command      |
+| -------------- | ------- | ------------------ |
+| Git            | Any     | `git --version`    |
+| Docker Desktop | 4.x+    | `docker --version` |
+| Node.js        | 20.x    | `node --version`   |
+| npm            | 9.x+    | `npm --version`    |
+| AWS CLI        | 2.x     | `aws --version`    |
 
 **psql is NOT required.** For the one step that needs it (creating databases on RDS), you can use Docker instead. See step 5.4.
 
@@ -40,6 +40,7 @@ aws configure
 ```
 
 Enter:
+
 - Access Key ID: (your key)
 - Secret Access Key: (your secret)
 - Default region: `ap-southeast-1`
@@ -96,6 +97,7 @@ docker compose up --build -d
 ```
 
 This starts 10 containers:
+
 - 1 PostgreSQL (with 5 databases created by `init-db.sql`)
 - 1 Redis
 - 1 Zookeeper + 1 Kafka
@@ -148,13 +150,13 @@ curl -s -X POST http://localhost:8080/api/users/register \
 Save the `token` from the response. Example:
 
 ```
-export TOKEN="eyJhbG..."
+export TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIwNTkxZmM3Ni1hNDUyLTQ1MWQtODA3MS0zMzk5NDA4OGI4OWIiLCJlbWFpbCI6ImFkbWluQGNsb3VkcmV0YWlsLmNvbSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc3MDM0MjAzMywiZXhwIjoxNzcwNDI4NDMzfQ.BmMQeSKQo_TnjcZUnFlcPlPzqX0p5VpMXELkvd4aqdA"
 ```
 
 **Windows Git Bash**: If `export` does not work, use:
 
 ```bash
-TOKEN="eyJhbG..."
+TOKEN="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIwNTkxZmM3Ni1hNDUyLTQ1MWQtODA3MS0zMzk5NDA4OGI4OWIiLCJlbWFpbCI6ImFkbWluQGNsb3VkcmV0YWlsLmNvbSIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc3MDM0MjAzMywiZXhwIjoxNzcwNDI4NDMzfQ.BmMQeSKQo_TnjcZUnFlcPlPzqX0p5VpMXELkvd4aqdA"
 ```
 
 ### 4.2 Login (if you need a fresh token)
@@ -317,6 +319,7 @@ docker run --rm -e PGPASSWORD=CloudRetail2026db postgres:15-alpine psql -h $RDS_
 ```
 
 You should see 5 databases listed:
+
 - cloudretail_users
 - cloudretail_products
 - cloudretail_orders
@@ -497,8 +500,8 @@ Create a `docker-compose.prod.yml` that uses ECR images and connects to RDS:
 
 ```bash
 # Set your variables (replace with actual values)
-export AWS_ACCOUNT_ID="YOUR_ACCOUNT_ID"
-export RDS_HOST="cloudretail-db.xxxxxxxx.ap-southeast-1.rds.amazonaws.com"
+export AWS_ACCOUNT_ID="850874728684"
+export RDS_HOST="cloudretail-db.cjy40oge00uf.ap-southeast-1.rds.amazonaws.com"
 export DB_PASSWORD="CloudRetail2026db"
 
 # Log in to ECR
@@ -758,31 +761,31 @@ rm -f cloudretail-key.pem
 
 ## API Route Reference
 
-| Service | Method | Full URL | Auth |
-|---------|--------|----------|------|
-| **User** | POST | `/api/users/register` | Public |
-| **User** | POST | `/api/users/login` | Public |
-| **User** | GET | `/api/users/profile` | Token |
-| **User** | PUT | `/api/users/profile` | Token |
-| **User** | DELETE | `/api/users/profile` | Token |
-| **User** | GET | `/api/users/users` | Admin |
-| **Product** | GET | `/api/products/products` | Public |
-| **Product** | GET | `/api/products/products/:id` | Public |
-| **Product** | POST | `/api/products/products` | Admin/Vendor |
-| **Product** | PUT | `/api/products/products/:id` | Admin/Vendor |
-| **Product** | DELETE | `/api/products/products/:id` | Admin/Vendor |
-| **Product** | GET | `/api/products/search?q=term` | Public |
-| **Order** | POST | `/api/orders/orders` | Token |
-| **Order** | GET | `/api/orders/orders` | Token |
-| **Order** | GET | `/api/orders/orders/:id` | Token |
-| **Order** | GET | `/api/orders/admin/orders` | Admin |
-| **Inventory** | POST | `/api/inventory/inventory` | Admin/Vendor |
-| **Inventory** | GET | `/api/inventory/inventory` | Admin/Vendor |
-| **Inventory** | GET | `/api/inventory/product/:productId` | Public |
-| **Inventory** | PUT | `/api/inventory/product/:productId` | Admin/Vendor |
-| **Payment** | POST | `/api/payments/payments` | Token |
-| **Payment** | GET | `/api/payments/payments` | Token |
-| **Payment** | GET | `/api/payments/order/:orderId` | Token |
+| Service       | Method | Full URL                            | Auth         |
+| ------------- | ------ | ----------------------------------- | ------------ |
+| **User**      | POST   | `/api/users/register`               | Public       |
+| **User**      | POST   | `/api/users/login`                  | Public       |
+| **User**      | GET    | `/api/users/profile`                | Token        |
+| **User**      | PUT    | `/api/users/profile`                | Token        |
+| **User**      | DELETE | `/api/users/profile`                | Token        |
+| **User**      | GET    | `/api/users/users`                  | Admin        |
+| **Product**   | GET    | `/api/products/products`            | Public       |
+| **Product**   | GET    | `/api/products/products/:id`        | Public       |
+| **Product**   | POST   | `/api/products/products`            | Admin/Vendor |
+| **Product**   | PUT    | `/api/products/products/:id`        | Admin/Vendor |
+| **Product**   | DELETE | `/api/products/products/:id`        | Admin/Vendor |
+| **Product**   | GET    | `/api/products/search?q=term`       | Public       |
+| **Order**     | POST   | `/api/orders/orders`                | Token        |
+| **Order**     | GET    | `/api/orders/orders`                | Token        |
+| **Order**     | GET    | `/api/orders/orders/:id`            | Token        |
+| **Order**     | GET    | `/api/orders/admin/orders`          | Admin        |
+| **Inventory** | POST   | `/api/inventory/inventory`          | Admin/Vendor |
+| **Inventory** | GET    | `/api/inventory/inventory`          | Admin/Vendor |
+| **Inventory** | GET    | `/api/inventory/product/:productId` | Public       |
+| **Inventory** | PUT    | `/api/inventory/product/:productId` | Admin/Vendor |
+| **Payment**   | POST   | `/api/payments/payments`            | Token        |
+| **Payment**   | GET    | `/api/payments/payments`            | Token        |
+| **Payment**   | GET    | `/api/payments/order/:orderId`      | Token        |
 
 All URLs are prefixed with `http://localhost:8080` (local) or `http://<EC2_IP>:8080` (AWS).
 
@@ -810,4 +813,4 @@ All URLs are prefixed with `http://localhost:8080` (local) or `http://<EC2_IP>:8
 
 ---
 
-*COMP60010 - Enterprise Cloud and Distributed Web Applications - Staffordshire University*
+_COMP60010 - Enterprise Cloud and Distributed Web Applications - Staffordshire University_

@@ -519,6 +519,156 @@ async function loadInventory() {
 }
 
 // ==================== ADMIN ====================
+
+// Populate product dropdowns in admin panel
+function populateAdminDropdowns() {
+  const invSelect = document.getElementById('admin-inv-product');
+  const deleteSelect = document.getElementById('admin-delete-product');
+
+  if (!invSelect || !deleteSelect) return;
+
+  // Clear existing options except first
+  invSelect.innerHTML = '<option value="">Select Product</option>';
+  deleteSelect.innerHTML = '<option value="">Select Product to Delete</option>';
+
+  state.products.forEach(p => {
+    const opt1 = document.createElement('option');
+    opt1.value = p.id;
+    opt1.textContent = p.name + ' (' + p.sku + ')';
+    invSelect.appendChild(opt1);
+
+    const opt2 = document.createElement('option');
+    opt2.value = p.id;
+    opt2.textContent = p.name + ' (' + p.sku + ')';
+    deleteSelect.appendChild(opt2);
+  });
+}
+
+// Show admin message
+function showAdminMessage(message, isError = false) {
+  const msgEl = document.getElementById('admin-message');
+  if (!msgEl) return;
+  msgEl.textContent = message;
+  msgEl.className = 'admin-message ' + (isError ? 'error' : 'success');
+  msgEl.classList.remove('hidden');
+  setTimeout(() => msgEl.classList.add('hidden'), 5000);
+}
+
+// Add Product
+async function handleAddProduct(e) {
+  e.preventDefault();
+
+  if (!state.user || state.user.role === 'customer') {
+    showAdminMessage('Only admin or vendor can add products', true);
+    return;
+  }
+
+  const name = document.getElementById('admin-product-name').value;
+  const description = document.getElementById('admin-product-desc').value;
+  const price = parseFloat(document.getElementById('admin-product-price').value);
+  const category = document.getElementById('admin-product-category').value;
+  const sku = document.getElementById('admin-product-sku').value;
+
+  const res = await apiFetch('/api/products/products', {
+    method: 'POST',
+    body: JSON.stringify({
+      name,
+      description,
+      price,
+      category,
+      sku,
+      vendorId: state.user.id,
+    }),
+  });
+
+  if (res.ok && res.data) {
+    showAdminMessage('Product "' + name + '" added successfully!');
+    addEventLogEntry('PRODUCT_CREATED', name + ' added to catalog');
+    // Clear form
+    document.getElementById('admin-product-name').value = '';
+    document.getElementById('admin-product-desc').value = '';
+    document.getElementById('admin-product-price').value = '';
+    document.getElementById('admin-product-category').value = '';
+    document.getElementById('admin-product-sku').value = '';
+    // Reload products
+    await loadProducts();
+    populateAdminDropdowns();
+  } else {
+    const errMsg = (res.data && res.data.error && res.data.error.message) || 'Failed to add product';
+    showAdminMessage(errMsg, true);
+  }
+}
+
+// Add Inventory
+async function handleAddInventory(e) {
+  e.preventDefault();
+
+  if (!state.user || state.user.role === 'customer') {
+    showAdminMessage('Only admin or vendor can manage inventory', true);
+    return;
+  }
+
+  const productId = document.getElementById('admin-inv-product').value;
+  const quantity = parseInt(document.getElementById('admin-inv-quantity').value);
+  const warehouseLocation = document.getElementById('admin-inv-warehouse').value;
+
+  const res = await apiFetch('/api/inventory/inventory', {
+    method: 'POST',
+    body: JSON.stringify({
+      productId,
+      quantity,
+      warehouseLocation,
+    }),
+  });
+
+  if (res.ok && res.data) {
+    const productName = state.products.find(p => p.id === productId)?.name || productId;
+    showAdminMessage('Added ' + quantity + ' units to "' + productName + '"');
+    addEventLogEntry('INVENTORY_UPDATED', productName + ': +' + quantity + ' units');
+    // Clear form
+    document.getElementById('admin-inv-product').value = '';
+    document.getElementById('admin-inv-quantity').value = '';
+    document.getElementById('admin-inv-warehouse').value = '';
+  } else {
+    const errMsg = (res.data && res.data.error && res.data.error.message) || 'Failed to add inventory';
+    showAdminMessage(errMsg, true);
+  }
+}
+
+// Delete Product
+async function handleDeleteProduct(e) {
+  e.preventDefault();
+
+  if (!state.user || state.user.role !== 'admin') {
+    showAdminMessage('Only admin can delete products', true);
+    return;
+  }
+
+  const productId = document.getElementById('admin-delete-product').value;
+  const productName = state.products.find(p => p.id === productId)?.name || productId;
+
+  if (!confirm('Are you sure you want to delete "' + productName + '"?')) {
+    return;
+  }
+
+  const res = await apiFetch('/api/products/products/' + productId, {
+    method: 'DELETE',
+  });
+
+  if (res.ok) {
+    showAdminMessage('Product "' + productName + '" deleted');
+    addEventLogEntry('PRODUCT_DELETED', productName + ' removed from catalog');
+    // Clear form
+    document.getElementById('admin-delete-product').value = '';
+    // Reload products
+    await loadProducts();
+    populateAdminDropdowns();
+  } else {
+    const errMsg = (res.data && res.data.error && res.data.error.message) || 'Failed to delete product';
+    showAdminMessage(errMsg, true);
+  }
+}
+
 async function checkServiceHealth() {
   const apiDot = document.getElementById('api-status');
   const dbDot = document.getElementById('db-status');
@@ -544,6 +694,7 @@ async function checkServiceHealth() {
 
 function refreshAdminPanel() {
   checkServiceHealth();
+  populateAdminDropdowns();
   const throughput = 1200 + Math.floor(Math.random() * 100);
   const latency = 400 + Math.floor(Math.random() * 50);
   const errorRate = (0.2 + Math.random() * 0.2).toFixed(1);
