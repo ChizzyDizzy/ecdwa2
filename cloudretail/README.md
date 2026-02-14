@@ -167,3 +167,5 @@ For more details, check the docs folder:
 - `docs/SCALABILITY.md` - how the system scales
 - `docs/SECURITY.md` - security measures implemented
 - `docs/FAULT-TOLERANCE.md` - how the system handles failures
+
+
