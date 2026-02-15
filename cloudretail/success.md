@@ -9,12 +9,14 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Design and implement a cloud-native application using microservices
 
 **Implementation**:
+
 - Five independent microservices: User, Product, Order, Inventory, Payment
 - Each service in its own directory: `services/user-service`, `services/product-service`, etc.
 - Independent deployment and scaling capability
 - Clear separation of concerns
 
 **Evidence**:
+
 - `services/` directory structure
 - Each service has its own `package.json`, `Dockerfile`, `src/` directory
 - Independent API endpoints (ports 3001-3005)
@@ -24,11 +26,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Proper data management and isolation
 
 **Implementation**:
+
 - Each service has its own PostgreSQL database
 - Five separate databases: `user_db`, `product_db`, `order_db`, `inventory_db`, `payment_db`
 - Services don't share data directly - communicate via APIs or events
 
 **Evidence**:
+
 - `docker-compose.yml` - see environment variables for each service
 - AWS RDS has 5 separate databases
 - Each service's `config/database.ts` connects to its own database
@@ -38,11 +42,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Centralized request routing
 
 **Implementation**:
+
 - API Gateway at port 3000 routes all client requests
 - Proxies to appropriate microservice based on URL path
 - Handles CORS and common middleware
 
 **Evidence**:
+
 - `api-gateway/src/index.ts` - routing configuration
 - `api-gateway/src/routes/` - route definitions
 - Clients only connect to port 3000, not individual services
@@ -52,11 +58,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Asynchronous communication between services
 
 **Implementation**:
+
 - Event bus service publishes events to Kafka
 - Services publish events: `order.created`, `inventory.low_stock`, `payment.processed`, etc.
 - Graceful degradation when event bus unavailable (3-second timeout)
 
 **Evidence**:
+
 - `event-bus/` directory
 - `services/*/src/events/event-publisher.ts` in each service
 - AbortController with 3000ms timeout in event publishers
@@ -68,12 +76,14 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: System must be able to scale horizontally
 
 **Implementation**:
+
 - Stateless services using JWT (no session storage)
 - Database connection pooling via Sequelize
 - Each service can be replicated independently
 - Kubernetes HPA configurations for auto-scaling
 
 **Evidence**:
+
 - `docs/SCALABILITY.md` - detailed scaling strategies
 - `infrastructure/kubernetes/hpa.yaml` - Horizontal Pod Autoscaler configs
 - JWT authentication (no server-side sessions)
@@ -84,10 +94,12 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Implement caching to improve performance
 
 **Implementation**:
+
 - Redis for session caching and frequently accessed data
 - Configured in docker-compose
 
 **Evidence**:
+
 - `docker-compose.yml` - Redis service
 - Redis connection in services that need caching
 
@@ -96,11 +108,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Distribute traffic across instances
 
 **Implementation**:
+
 - API Gateway acts as load balancer entry point
 - Kubernetes Ingress for production
 - Round-robin service discovery
 
 **Evidence**:
+
 - `infrastructure/kubernetes/ingress.yaml`
 - `api-gateway/` forwards to service instances
 
@@ -111,12 +125,14 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Secure user authentication
 
 **Implementation**:
+
 - JWT token-based authentication
 - Bcrypt password hashing (12 rounds)
 - Role-based access control (customer, vendor, admin)
 - Two-factor authentication using TOTP
 
 **Evidence**:
+
 - `shared/middleware/src/auth.middleware.ts` - JWT verification
 - `services/user-service/src/services/user.service.ts` - bcrypt hashing, 2FA
 - `services/user-service/src/middleware/rbac.middleware.ts` - role checks
@@ -126,11 +142,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Prevent injection attacks
 
 **Implementation**:
+
 - Joi schema validation on all inputs
 - Sequelize ORM prevents SQL injection
 - Type checking with TypeScript
 
 **Evidence**:
+
 - `services/*/src/routes/*.ts` - Joi validation schemas
 - All database queries use Sequelize, not raw SQL
 - TypeScript strict mode in `tsconfig.json`
@@ -140,11 +158,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Secure network communication
 
 **Implementation**:
+
 - AWS Security Groups restrict database access
 - VPC isolation
 - Environment variables for secrets (not hardcoded)
 
 **Evidence**:
+
 - `docs/SECURITY.md` - comprehensive security documentation
 - AWS Security Groups configuration
 - `.env` files for configuration (in .gitignore)
@@ -154,11 +174,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Data protection regulations
 
 **Implementation**:
+
 - User consent required for registration
 - User deletion endpoint removes all personal data
 - Password hashing for data protection
 
 **Evidence**:
+
 - `services/user-service/src/services/user.service.ts` - `gdprConsent` required
 - Delete user endpoint publishes `user.deleted` event for cleanup
 
@@ -169,10 +191,12 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Prevent cascading failures
 
 **Implementation**:
+
 - Opossum library for circuit breakers
 - Opens after 5 failures, auto-recovery after 30 seconds
 
 **Evidence**:
+
 - `docs/FAULT-TOLERANCE.md` - circuit breaker documentation
 - Circuit breaker configuration in services making external calls
 
@@ -181,11 +205,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: System continues operating despite partial failures
 
 **Implementation**:
+
 - Event publishing has 3-second timeout
 - Services continue if event bus is down
 - Error handling doesn't crash services
 
 **Evidence**:
+
 - `services/*/src/events/event-publisher.ts` - AbortController timeout
 - Try-catch blocks in all service methods
 - Services work independently even if others fail
@@ -195,10 +221,12 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Data consistency
 
 **Implementation**:
+
 - Sequelize transactions for multi-step operations
 - Rollback on failure (e.g., inventory reservation)
 
 **Evidence**:
+
 - `services/inventory-service/src/services/inventory.service.ts` - transaction usage
 - `services/order-service/src/services/order.service.ts` - compensating transactions
 
@@ -207,10 +235,12 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Monitor service health
 
 **Implementation**:
+
 - Health check endpoints on all services
 - Docker health checks restart failed containers
 
 **Evidence**:
+
 - `api-gateway/src/routes/health.ts`
 - `docker-compose.yml` - healthcheck configurations
 
@@ -221,12 +251,14 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Test individual components
 
 **Implementation**:
+
 - Jest testing framework
 - Tests for all services
 - Mocking external dependencies
 - Test coverage tracking
 
 **Evidence**:
+
 - `services/*/tests/unit/*.test.ts` - comprehensive unit tests
 - `jest.config.js` in each service
 - `npm test` runs all tests
@@ -237,11 +269,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Test service interactions
 
 **Implementation**:
+
 - Integration test suite
 - Tests for API endpoints
 - Service-to-service communication tests
 
 **Evidence**:
+
 - `tests/integration/` directory
 - Tests verify full request/response flows
 
@@ -250,12 +284,14 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Adequate test coverage
 
 **Implementation**:
+
 - Unit tests for service logic
 - Error scenario testing
 - Authentication/authorization testing
 - Database operation testing
 
 **Evidence**:
+
 - Test files in each service's `tests/` directory
 - Tests cover happy paths and error cases
 - Mock implementations for external dependencies
@@ -267,11 +303,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Use containers for deployment
 
 **Implementation**:
+
 - Docker containers for all services
 - Docker Compose for local development
 - Multi-stage builds for optimization
 
 **Evidence**:
+
 - `Dockerfile` in each service directory
 - `docker-compose.yml` at root
 - Images pushed to AWS ECR
@@ -281,12 +319,14 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Deploy to cloud platform
 
 **Implementation**:
+
 - AWS EC2 for compute
 - AWS RDS for databases
 - AWS ECR for container registry
 - All within free tier limits
 
 **Evidence**:
+
 - EC2 instance running Docker Compose
 - RDS PostgreSQL with 5 databases
 - ECR repositories for each service
@@ -297,11 +337,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Automated infrastructure setup
 
 **Implementation**:
+
 - Docker Compose files
 - Kubernetes manifests
 - Deployment scripts
 
 **Evidence**:
+
 - `docker-compose.yml` - development environment
 - `infrastructure/kubernetes/` - production manifests
 - `infrastructure/kubernetes/deploy.sh` - automated deployment
@@ -311,11 +353,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Automated deployment pipeline
 
 **Implementation**:
+
 - Git-based workflow
 - Separate development and production configs
 - Deployment scripts for automation
 
 **Evidence**:
+
 - `infrastructure/kubernetes/deploy.sh`
 - Separate Docker Compose files for different environments
 - Git branching strategy
@@ -327,12 +371,14 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Well-designed API endpoints
 
 **Implementation**:
+
 - REST principles (GET, POST, PUT, DELETE)
 - Proper HTTP status codes
 - JSON request/response format
 - API versioning ready
 
 **Evidence**:
+
 - `services/*/src/routes/*.ts` - RESTful route definitions
 - Consistent error responses
 - `docs/api/openapi.yaml` - API documentation
@@ -342,11 +388,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Proper error responses
 
 **Implementation**:
+
 - Custom error classes (NotFoundError, ValidationError, etc.)
 - Global error handling middleware
 - Consistent error response format
 
 **Evidence**:
+
 - `shared/middleware/src/errors/` - error classes
 - `shared/middleware/src/error-handler.middleware.ts` - global handler
 - All errors return proper status codes and messages
@@ -356,11 +404,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Validate incoming requests
 
 **Implementation**:
+
 - Joi validation schemas
 - Type checking with TypeScript
 - Custom validation middleware
 
 **Evidence**:
+
 - Joi schemas in route files
 - TypeScript interfaces for request/response types
 - Validation middleware in routes
@@ -372,11 +422,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Type-safe code
 
 **Implementation**:
+
 - Full TypeScript implementation
 - Strict mode enabled
 - Interface definitions for all data structures
 
 **Evidence**:
+
 - `.ts` file extension everywhere
 - `tsconfig.json` with strict settings
 - Type definitions in `src/models/` and interfaces
@@ -386,11 +438,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Clean, maintainable code structure
 
 **Implementation**:
+
 - Layered architecture (routes → services → models)
 - Shared libraries for common code
 - Separation of concerns
 
 **Evidence**:
+
 - Consistent directory structure in all services
 - `shared/` directory for reusable code
 - Clear separation: routes handle HTTP, services handle business logic
@@ -400,12 +454,14 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Code and architecture documentation
 
 **Implementation**:
+
 - README with setup instructions
 - Architecture documentation
 - API documentation
 - Code comments where needed
 
 **Evidence**:
+
 - `README.md` - setup guide
 - `docs/SCALABILITY.md`, `docs/SECURITY.md`, `docs/FAULT-TOLERANCE.md`
 - `docs/api/openapi.yaml`
@@ -418,6 +474,7 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: User registration and authentication
 
 **Implementation**:
+
 - User registration with email/password
 - Login with JWT token generation
 - Profile management
@@ -425,6 +482,7 @@ This document maps the assignment requirements to the actual implementation in t
 - Account deletion (GDPR)
 
 **Evidence**:
+
 - `services/user-service/src/services/user.service.ts`
 - Registration, login, update, delete endpoints
 - JWT token in login response
@@ -434,6 +492,7 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Product management
 
 **Implementation**:
+
 - CRUD operations for products
 - Search and filtering
 - Category management
@@ -441,6 +500,7 @@ This document maps the assignment requirements to the actual implementation in t
 - Pagination
 
 **Evidence**:
+
 - `services/product-service/src/services/product.service.ts`
 - Search with filters (category, price range, search term)
 - Pagination in getAllProducts
@@ -450,6 +510,7 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Stock tracking
 
 **Implementation**:
+
 - Inventory quantity tracking
 - Reserved quantity for pending orders
 - Low stock alerts
@@ -457,6 +518,7 @@ This document maps the assignment requirements to the actual implementation in t
 - Atomic reservation operations
 
 **Evidence**:
+
 - `services/inventory-service/src/services/inventory.service.ts`
 - `reserveInventory`, `releaseInventory`, `confirmInventoryUsage` methods
 - Transaction-based operations
@@ -466,6 +528,7 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Order creation and management
 
 **Implementation**:
+
 - Order creation with inventory verification
 - Order status tracking
 - Shipping address management
@@ -473,6 +536,7 @@ This document maps the assignment requirements to the actual implementation in t
 - Order cancellation with inventory release
 
 **Evidence**:
+
 - `services/order-service/src/services/order.service.ts`
 - Verifies inventory before creating order
 - Status updates (pending, confirmed, shipped, delivered, cancelled)
@@ -482,12 +546,14 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Payment handling
 
 **Implementation**:
+
 - Payment record creation
 - Multiple payment methods
 - Payment status tracking
 - Order association
 
 **Evidence**:
+
 - `services/payment-service/src/services/payment.service.ts`
 - Payment creation and retrieval
 - Status tracking (pending, completed, failed)
@@ -497,6 +563,7 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: User interface
 
 **Implementation**:
+
 - Responsive web interface
 - User registration/login
 - Product browsing
@@ -504,6 +571,7 @@ This document maps the assignment requirements to the actual implementation in t
 - Order creation
 
 **Evidence**:
+
 - `frontend/public/index.html` - UI structure
 - `frontend/public/app.js` - functionality
 - `frontend/public/styles.css` - styling
@@ -516,12 +584,14 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Efficient data access
 
 **Implementation**:
+
 - Sequelize ORM with connection pooling
 - Proper indexing
 - Query optimization
 - Pagination to limit result sets
 
 **Evidence**:
+
 - Connection pool config in database.ts files
 - Indexes defined in model files
 - Pagination in list endpoints (limit/offset)
@@ -531,12 +601,14 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Fast API responses
 
 **Implementation**:
+
 - Async/await for non-blocking operations
 - Connection pooling
 - Efficient queries
 - Caching for frequently accessed data
 
 **Evidence**:
+
 - All service methods use async/await
 - No synchronous blocking operations
 - Redis for caching
@@ -548,11 +620,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: Application logging
 
 **Implementation**:
+
 - Winston logger
 - Structured logging
 - Different log levels (info, error, warn, debug)
 
 **Evidence**:
+
 - `shared/middleware/src/logger.ts`
 - Logging throughout services
 - Log format includes timestamps and context
@@ -562,11 +636,13 @@ This document maps the assignment requirements to the actual implementation in t
 **Requirement**: System health visibility
 
 **Implementation**:
+
 - Health check endpoints
 - Service status reporting
 - Docker health checks
 
 **Evidence**:
+
 - `/health` endpoint on API Gateway
 - Health checks in docker-compose.yml
 - Each service reports its status
@@ -576,34 +652,40 @@ This document maps the assignment requirements to the actual implementation in t
 ### ✓ Two-Factor Authentication
 
 **Implementation**:
+
 - TOTP-based 2FA
 - QR code generation
 - Verification on login
 
 **Evidence**:
+
 - `services/user-service/src/services/user.service.ts` - `enableTwoFactor`, `verifyTwoFactor`
 - Speakeasy library for TOTP
 
 ### ✓ Event-Driven Architecture
 
 **Implementation**:
+
 - Event publishing for async operations
 - Event types for all major actions
 - Loose coupling between services
 
 **Evidence**:
+
 - Event publisher in each service
 - Events: order.created, inventory.low_stock, payment.processed, etc.
 
 ### ✓ Kubernetes Ready
 
 **Implementation**:
+
 - Complete Kubernetes manifests
 - Deployments, Services, ConfigMaps
 - HPA for auto-scaling
 - Network policies
 
 **Evidence**:
+
 - `infrastructure/kubernetes/` directory
 - Deployment manifests for all services
 - Production-ready configurations

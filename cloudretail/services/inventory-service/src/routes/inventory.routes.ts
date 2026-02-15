@@ -31,13 +31,13 @@ router.post('/confirm', standardRateLimiter, confirmInventoryUsage);
  * Public read routes
  */
 router.get('/product/:productId', standardRateLimiter, getInventoryByProductId);
-router.get('/inventory/:id', standardRateLimiter, getInventoryById);
+router.get('/:id', standardRateLimiter, getInventoryById);
 
 /**
  * Protected routes - require authentication and authorization
  */
 router.post(
-  '/inventory',
+  '/',
   authenticate,
   authorize('admin', 'vendor'),
   strictRateLimiter,
@@ -53,7 +53,7 @@ router.put(
 );
 
 router.get(
-  '/inventory',
+  '/',
   authenticate,
   authorize('admin', 'vendor'),
   standardRateLimiter,

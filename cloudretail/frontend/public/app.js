@@ -208,7 +208,7 @@ async function loadProducts() {
   grid.innerHTML = '';
   loading.classList.add('active');
 
-  const res = await apiFetch('/api/products/products');
+  const res = await apiFetch('/api/products');
 
   let products;
   if (res.ok && res.data && res.data.data) {
@@ -394,7 +394,7 @@ async function placeOrder() {
 
   addEventLogEntry('ORDER_INITIATED', 'Creating order via Saga pattern...');
 
-  const res = await apiFetch('/api/orders/orders', {
+  const res = await apiFetch('/api/orders', {
     method: 'POST',
     body: JSON.stringify({ items, shippingAddress: address, totalAmount }),
   });
@@ -426,7 +426,7 @@ async function loadOrders() {
   loginPrompt.classList.add('hidden');
   ordersContainer.innerHTML = '';
 
-  const res = await apiFetch('/api/orders/orders');
+  const res = await apiFetch('/api/orders');
 
   let orders = [];
   if (res.ok && res.data && res.data.data) {
@@ -569,7 +569,7 @@ async function handleAddProduct(e) {
   const category = document.getElementById('admin-product-category').value;
   const sku = document.getElementById('admin-product-sku').value;
 
-  const res = await apiFetch('/api/products/products', {
+  const res = await apiFetch('/api/products', {
     method: 'POST',
     body: JSON.stringify({
       name,
@@ -612,7 +612,7 @@ async function handleAddInventory(e) {
   const quantity = parseInt(document.getElementById('admin-inv-quantity').value);
   const warehouseLocation = document.getElementById('admin-inv-warehouse').value;
 
-  const res = await apiFetch('/api/inventory/inventory', {
+  const res = await apiFetch('/api/inventory', {
     method: 'POST',
     body: JSON.stringify({
       productId,
@@ -651,7 +651,7 @@ async function handleDeleteProduct(e) {
     return;
   }
 
-  const res = await apiFetch('/api/products/products/' + productId, {
+  const res = await apiFetch('/api/products/' + productId, {
     method: 'DELETE',
   });
 

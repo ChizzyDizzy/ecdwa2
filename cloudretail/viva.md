@@ -9,6 +9,7 @@
 ### Microservices Breakdown
 
 **User Service (Port 3001)**
+
 - Handles authentication and registration
 - JWT token generation with 24-hour expiry
 - Role-based access control (customer, vendor, admin)
@@ -16,6 +17,7 @@
 - GDPR compliance with user deletion
 
 **Product Service (Port 3002)**
+
 - Product catalog management
 - Vendor can create/update their products
 - Admin can delete any product
@@ -23,6 +25,7 @@
 - Pagination support
 
 **Order Service (Port 3003)**
+
 - Coordinates the order workflow
 - Verifies inventory availability before order creation
 - Reserves inventory through API calls
@@ -30,12 +33,14 @@
 - Publishes events for order status changes
 
 **Inventory Service (Port 3004)**
+
 - Stock management with reserved quantity tracking
 - Atomic operations using database transactions
 - Low stock and out-of-stock event publishing
 - Warehouse location tracking
 
 **Payment Service (Port 3005)**
+
 - Simulated payment processing
 - Links payments to orders
 - Multiple payment methods support
@@ -68,6 +73,7 @@
 ### 1. Show the Running System
 
 **On AWS:**
+
 ```bash
 # SSH into EC2
 ssh -i ~/.ssh/cloudretail-key.pem ec2-user@YOUR_EC2_IP
@@ -77,9 +83,13 @@ docker-compose ps
 
 # Show health check
 curl http://YOUR_EC2_IP:3000/health
+
+ssh -i ~/.ssh/cloudretail-key.pem ec2-user@3.1.27.41
+
 ```
 
 **Local:**
+
 ```bash
 # Show it running locally too
 docker-compose ps
@@ -89,12 +99,14 @@ open http://localhost:8080
 ### 2. Register and Login
 
 **Frontend Demo:**
+
 - Open http://localhost:8080 or http://YOUR_EC2_IP:8080
 - Register a new user
 - Login and get the token
 - Show the user dashboard
 
 **API Demo:**
+
 ```bash
 # Register
 curl -X POST http://localhost:3000/api/users/register \
@@ -173,6 +185,7 @@ npm test --workspace=user-service
 ```
 
 Point out:
+
 - Unit tests with Jest
 - Mocking with jest.fn()
 - Testing error scenarios
@@ -183,6 +196,7 @@ Point out:
 ### "Why microservices instead of monolithic?"
 
 "Microservices offer several advantages for this e-commerce platform:
+
 - **Independent scaling** - we can scale the Order service during high traffic without scaling everything
 - **Technology flexibility** - each service can use different tech stacks if needed
 - **Fault isolation** - if Payment service goes down, users can still browse products
@@ -194,6 +208,7 @@ The tradeoff is increased complexity in deployment and inter-service communicati
 ### "How do you handle database transactions across services?"
 
 "We use the Saga pattern with event-driven choreography. For example, when creating an order:
+
 1. Order service creates an order record
 2. Calls Inventory service to verify and reserve stock
 3. If inventory reservation fails, Order service deletes the order (compensating transaction)
@@ -205,6 +220,7 @@ This is eventual consistency rather than ACID transactions, which is acceptable 
 ### "What about security?"
 
 "Security is implemented at multiple layers:
+
 - **Authentication**: JWT tokens with 24-hour expiry, bcrypt password hashing with 12 salt rounds
 - **Authorization**: Role-based access control (RBAC) - customers can only view, vendors can create products, admins can delete
 - **Network**: AWS security groups restrict database access to application services only
@@ -215,6 +231,7 @@ This is eventual consistency rather than ACID transactions, which is acceptable 
 ### "How does the system scale?"
 
 "The system scales in several ways:
+
 - **Horizontal scaling**: Each service can be replicated - we have HPA configs for Kubernetes
 - **Database connection pooling**: Sequelize manages connections efficiently
 - **Caching**: Redis caches frequently accessed data
@@ -225,6 +242,7 @@ This is eventual consistency rather than ACID transactions, which is acceptable 
 ### "What happens if a service fails?"
 
 "We have multiple fault tolerance mechanisms:
+
 - **Circuit breakers**: Using Opossum library, prevents cascading failures
 - **Graceful degradation**: If event bus is down, services continue operating (3-second timeout)
 - **Health checks**: Docker health checks restart failed containers
@@ -235,6 +253,7 @@ This is eventual consistency rather than ACID transactions, which is acceptable 
 ### "Why did you choose PostgreSQL?"
 
 "PostgreSQL offers:
+
 - **ACID compliance**: Critical for order and payment data
 - **JSON support**: Flexible for storing order items and addresses
 - **Mature ecosystem**: Good ORM support with Sequelize
@@ -244,6 +263,7 @@ This is eventual consistency rather than ACID transactions, which is acceptable 
 ### "How do you test the system?"
 
 "We have a comprehensive testing strategy:
+
 - **Unit tests**: Jest tests for service logic in isolation, mocking database and external calls
 - **Integration tests**: Testing service-to-service communication
 - **API tests**: Using curl/Postman to validate endpoints
@@ -253,6 +273,7 @@ This is eventual consistency rather than ACID transactions, which is acceptable 
 ### "What would you improve with more time?"
 
 "Several enhancements I'd make:
+
 - **Production Kafka**: Replace the Docker Kafka with managed AWS MSK for better reliability
 - **Real payment gateway**: Integrate Stripe or PayPal instead of simulation
 - **Comprehensive monitoring**: Add Prometheus and Grafana dashboards
@@ -265,6 +286,7 @@ This is eventual consistency rather than ACID transactions, which is acceptable 
 ### "Explain your AWS deployment"
 
 "The deployment uses:
+
 - **EC2 t3.micro**: Runs Docker Compose with all services
 - **RDS PostgreSQL**: Single instance with 5 databases (one per service)
 - **ECR**: Stores Docker images for each service
@@ -277,6 +299,7 @@ We didn't use Kafka on EC2 due to memory constraints (1GB RAM on t3.micro), but 
 ## Technical Details to Remember
 
 ### Environment Variables
+
 ```
 NODE_ENV=production
 DB_HOST=your-rds-endpoint.ap-southeast-1.rds.amazonaws.com
@@ -286,6 +309,7 @@ JWT_SECRET=(generated secret)
 ```
 
 ### Ports
+
 - API Gateway: 3000
 - User Service: 3001
 - Product Service: 3002
@@ -299,6 +323,7 @@ JWT_SECRET=(generated secret)
 - Kafka: 9092
 
 ### Key Technologies
+
 - Node.js + Express
 - TypeScript
 - Sequelize ORM
