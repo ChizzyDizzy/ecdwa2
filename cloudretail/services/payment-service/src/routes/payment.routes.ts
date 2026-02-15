@@ -20,9 +20,9 @@ const router = Router();
 /**
  * Protected routes - require authentication
  */
-router.post('/payments', authenticate, strictRateLimiter, createPayment);
-router.get('/payments', authenticate, standardRateLimiter, getUserPayments);
-router.get('/payments/:id', authenticate, standardRateLimiter, getPaymentById);
+router.post('/', authenticate, strictRateLimiter, createPayment);
+router.get('/', authenticate, standardRateLimiter, getUserPayments);
+router.get('/:id', authenticate, standardRateLimiter, getPaymentById);
 router.get(
   '/order/:orderId',
   authenticate,
@@ -34,7 +34,7 @@ router.get(
  * Admin routes
  */
 router.get(
-  '/admin/payments',
+  '/admin',
   authenticate,
   authorize('admin'),
   standardRateLimiter,
@@ -42,7 +42,7 @@ router.get(
 );
 
 router.post(
-  '/payments/:id/refund',
+  '/:id/refund',
   authenticate,
   authorize('admin'),
   strictRateLimiter,
@@ -50,7 +50,7 @@ router.post(
 );
 
 router.post(
-  '/payments/:id/retry',
+  '/:id/retry',
   authenticate,
   authorize('admin'),
   strictRateLimiter,

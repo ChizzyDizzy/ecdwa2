@@ -23,8 +23,8 @@ const router = Router();
  * Public routes
  */
 router.get('/search', standardRateLimiter, searchProducts);
-router.get('/products', standardRateLimiter, getAllProducts);
-router.get('/products/:id', standardRateLimiter, getProductById);
+router.get('/', standardRateLimiter, getAllProducts);
+router.get('/:id', standardRateLimiter, getProductById);
 router.get('/sku/:sku', standardRateLimiter, getProductBySku);
 router.get('/vendor/:vendorId', standardRateLimiter, getProductsByVendor);
 router.get('/category/:category', standardRateLimiter, getProductsByCategory);
@@ -33,7 +33,7 @@ router.get('/category/:category', standardRateLimiter, getProductsByCategory);
  * Protected routes - require authentication and authorization
  */
 router.post(
-  '/products',
+  '/',
   authenticate,
   authorize('admin', 'vendor'),
   strictRateLimiter,
@@ -41,7 +41,7 @@ router.post(
 );
 
 router.put(
-  '/products/:id',
+  '/:id',
   authenticate,
   authorize('admin', 'vendor'),
   strictRateLimiter,
@@ -49,7 +49,7 @@ router.put(
 );
 
 router.delete(
-  '/products/:id',
+  '/:id',
   authenticate,
   authorize('admin', 'vendor'),
   strictRateLimiter,

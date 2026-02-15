@@ -19,15 +19,15 @@ const router = Router();
 /**
  * Protected routes - require authentication
  */
-router.post('/orders', authenticate, strictRateLimiter, createOrder);
-router.get('/orders', authenticate, standardRateLimiter, getUserOrders);
-router.get('/orders/:id', authenticate, standardRateLimiter, getOrderById);
+router.post('/', authenticate, strictRateLimiter, createOrder);
+router.get('/', authenticate, standardRateLimiter, getUserOrders);
+router.get('/:id', authenticate, standardRateLimiter, getOrderById);
 
 /**
  * Admin routes
  */
 router.get(
-  '/admin/orders',
+  '/admin',
   authenticate,
   authorize('admin'),
   standardRateLimiter,
@@ -35,7 +35,7 @@ router.get(
 );
 
 router.put(
-  '/orders/:id/status',
+  '/:id/status',
   authenticate,
   authorize('admin'),
   strictRateLimiter,
@@ -43,7 +43,7 @@ router.put(
 );
 
 router.put(
-  '/orders/:id/payment',
+  '/:id/payment',
   authenticate,
   authorize('admin'),
   strictRateLimiter,
