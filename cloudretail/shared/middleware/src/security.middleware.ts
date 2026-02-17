@@ -56,7 +56,10 @@ export const standardRateLimiter = createRateLimiter(15 * 60 * 1000, 100);
  * Configures Cross-Origin Resource Sharing
  */
 export const corsOptions = {
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || [
+    'http://localhost:3000',
+    'http://3.1.27.41:3000',
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Correlation-ID'],
   exposedHeaders: ['X-Correlation-ID'],
