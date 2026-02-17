@@ -1,5 +1,4 @@
 services:
-  # Single PostgreSQL instance with all 5 databases (mirrors AWS RDS free-tier setup)
   postgres:
     image: postgres:15-alpine
     environment:
@@ -17,7 +16,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis for caching and event store
   redis:
     image: redis:7-alpine
     ports:
@@ -30,7 +28,6 @@ services:
       timeout: 5s
       retries: 5
 
-  # Kafka for event-driven architecture
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     environment:
@@ -58,15 +55,12 @@ services:
       timeout: 10s
       retries: 5
 
-  # Microservices (all point to the single postgres instance)
   user-service:
-    build:
-      context: .
-      dockerfile: ./services/user-service/Dockerfile
+    image: 850874728684.dkr.ecr.ap-southeast-1.amazonaws.com/cloudretail/user-service:latest
     ports:
       - "3001:3001"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3001
       DB_HOST: postgres
       DB_PORT: 5432
@@ -84,13 +78,11 @@ services:
     restart: unless-stopped
 
   product-service:
-    build:
-      context: .
-      dockerfile: ./services/product-service/Dockerfile
+    image: 850874728684.dkr.ecr.ap-southeast-1.amazonaws.com/cloudretail/product-service:latest
     ports:
       - "3002:3002"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3002
       DB_HOST: postgres
       DB_PORT: 5432
@@ -108,13 +100,11 @@ services:
     restart: unless-stopped
 
   order-service:
-    build:
-      context: .
-      dockerfile: ./services/order-service/Dockerfile
+    image: 850874728684.dkr.ecr.ap-southeast-1.amazonaws.com/cloudretail/order-service:latest
     ports:
       - "3003:3003"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3003
       DB_HOST: postgres
       DB_PORT: 5432
@@ -136,13 +126,11 @@ services:
     restart: unless-stopped
 
   inventory-service:
-    build:
-      context: .
-      dockerfile: ./services/inventory-service/Dockerfile
+    image: 850874728684.dkr.ecr.ap-southeast-1.amazonaws.com/cloudretail/inventory-service:latest
     ports:
       - "3004:3004"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3004
       DB_HOST: postgres
       DB_PORT: 5432
@@ -160,13 +148,11 @@ services:
     restart: unless-stopped
 
   payment-service:
-    build:
-      context: .
-      dockerfile: ./services/payment-service/Dockerfile
+    image: 850874728684.dkr.ecr.ap-southeast-1.amazonaws.com/cloudretail/payment-service:latest
     ports:
       - "3005:3005"
     environment:
-      NODE_ENV: development
+      NODE_ENV: production
       PORT: 3005
       DB_HOST: postgres
       DB_PORT: 5432
@@ -184,11 +170,8 @@ services:
         condition: service_started
     restart: unless-stopped
 
-  # Event Bus
   event-bus:
-    build:
-      context: .
-      dockerfile: ./event-bus/Dockerfile
+    image: 850874728684.dkr.ecr.ap-southeast-1.amazonaws.com/cloudretail/event-bus:latest
     ports:
       - "4000:4000"
     environment:
@@ -205,11 +188,8 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # API Gateway
   api-gateway:
-    build:
-      context: .
-      dockerfile: ./api-gateway/Dockerfile
+    image: 850874728684.dkr.ecr.ap-southeast-1.amazonaws.com/cloudretail/api-gateway:latest
     ports:
       - "8080:8080"
     environment:
@@ -230,11 +210,8 @@ services:
       - payment-service
     restart: unless-stopped
 
-  # Frontend
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: 850874728684.dkr.ecr.ap-southeast-1.amazonaws.com/cloudretail/frontend:latest
     ports:
       - "3000:3000"
     depends_on:
