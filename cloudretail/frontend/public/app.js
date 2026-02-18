@@ -440,7 +440,8 @@ async function loadOrders() {
 
   let orders = [];
   if (res.ok && res.data && res.data.data) {
-    orders = Array.isArray(res.data.data) ? res.data.data : [];
+    // Orders are in res.data.data.orders (API returns { orders: [...], total, limit, offset })
+    orders = Array.isArray(res.data.data.orders) ? res.data.data.orders : [];
     addEventLogEntry('ORDERS_LOADED', orders.length + ' orders from Order Service');
   }
 
@@ -457,7 +458,7 @@ async function loadOrders() {
     const status = order.status || 'pending';
     const date = order.createdAt ? new Date(order.createdAt).toLocaleString() : 'N/A';
     const itemsHtml = (order.items || []).map(item =>
-      `<div class="order-item-row"><span>${escapeHtml(item.name || item.productId)} x${item.quantity}</span><span>$${(item.price * item.quantity).toFixed(2)}</span></div>`
+      `<div class="order-item-row"><span>${escapeHtml(item.productName || item.name || item.productId)} x${item.quantity}</span><span>$${(item.price * item.quantity).toFixed(2)}</span></div>`
     ).join('');
 
     card.innerHTML = `
