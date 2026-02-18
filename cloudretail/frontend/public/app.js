@@ -406,7 +406,7 @@ async function placeOrder() {
 
   const res = await apiFetch('/api/orders', {
     method: 'POST',
-    body: JSON.stringify({ items, shippingAddress, totalAmount }),
+    body: JSON.stringify({ items, shippingAddress }),
   });
 
   if (res.ok && res.data) {
