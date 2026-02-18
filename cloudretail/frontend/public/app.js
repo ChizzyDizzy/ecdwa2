@@ -622,14 +622,27 @@ async function handleAddInventory(e) {
   const quantity = parseInt(document.getElementById('admin-inv-quantity').value);
   const warehouseLocation = document.getElementById('admin-inv-warehouse').value;
 
-  const res = await apiFetch('/api/inventory', {
-    method: 'POST',
-    body: JSON.stringify({
-      productId,
-      quantity,
-      warehouseLocation,
-    }),
-  });
+  // Check if inventory already exists for this product
+  const existing = await apiFetch('/api/inventory/product/' + productId);
+  let res;
+  if (existing.ok && existing.data) {
+    // Inventory exists — add to current quantity via PUT
+    const newQuantity = (existing.data.quantity || 0) + quantity;
+    res = await apiFetch('/api/inventory/product/' + productId, {
+      method: 'PUT',
+      body: JSON.stringify({ quantity: newQuantity }),
+    });
+  } else {
+    // No inventory yet — create it via POST
+    res = await apiFetch('/api/inventory', {
+      method: 'POST',
+      body: JSON.stringify({
+        productId,
+        quantity,
+        warehouseLocation,
+      }),
+    });
+  }
 
   if (res.ok && res.data) {
     const productName = state.products.find(p => p.id === productId)?.name || productId;
