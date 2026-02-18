@@ -386,17 +386,27 @@ async function placeOrder() {
 
   const items = state.cart.map(c => ({
     productId: c.productId,
+    productName: c.name || 'Product',
     quantity: c.quantity,
     price: c.price,
   }));
 
   const totalAmount = state.cart.reduce((sum, c) => sum + c.price * c.quantity, 0) + 5.99;
 
+  // Parse address into required format
+  const shippingAddress = {
+    street: address,
+    city: 'Singapore',
+    state: 'SG',
+    zipCode: '000000',
+    country: 'Singapore'
+  };
+
   addEventLogEntry('ORDER_INITIATED', 'Creating order via Saga pattern...');
 
   const res = await apiFetch('/api/orders', {
     method: 'POST',
-    body: JSON.stringify({ items, shippingAddress: address, totalAmount }),
+    body: JSON.stringify({ items, shippingAddress, totalAmount }),
   });
 
   if (res.ok && res.data) {
