@@ -38,7 +38,9 @@ export class OrderService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ items }),
+        body: JSON.stringify({
+          items: items.map(({ productId, quantity }) => ({ productId, quantity })),
+        }),
       });
 
       if (!response.ok) {
@@ -63,7 +65,10 @@ export class OrderService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ orderId, items }),
+        body: JSON.stringify({
+          orderId,
+          items: items.map(({ productId, quantity }) => ({ productId, quantity })),
+        }),
       });
 
       if (!response.ok) {
@@ -265,7 +270,10 @@ export class OrderService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ orderId, items }),
+        body: JSON.stringify({
+          orderId,
+          items: items.map(({ productId, quantity }) => ({ productId, quantity })),
+        }),
       });
     } catch (error) {
       logger.error('Error releasing inventory', { error });
